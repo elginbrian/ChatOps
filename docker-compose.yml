@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  chatops_app:
+    build: .
+    container_name: chatops_service
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      HOSTNAME: chatops_service_container
+    restart: unless-stopped

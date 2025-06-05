@@ -1,6 +1,7 @@
 import logging
 import re
-import docker 
+import docker
+import os
 from flask import Flask, render_template, request, jsonify
 
 DEBUG_MODE = True
@@ -8,12 +9,17 @@ SERVER_HOST = '0.0.0.0'
 SERVER_PORT = 5000
 COMMAND_TIMEOUT = 15
 
+CHATOP_CONTAINER_NAME = os.environ.get('CHATOP_SERVICE_NAME_OR_ID')
+
 app = Flask(__name__)
 docker_client = None
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+
+if not CHATOP_CONTAINER_NAME:
+    app.logger.warning("Environment variable CHATOP_SERVICE_NAME_OR_ID tidak diatur. Fitur proteksi diri kontainer mungkin tidak berfungsi optimal.")
 
 COMMAND_GUIDE = [
     {
@@ -80,13 +86,41 @@ def get_docker_client():
     global docker_client
     if docker_client is None:
         try:
-            docker_client = docker.from_env()
-            docker_client.ping() 
+            docker_client = docker.from_env(timeout=5)
+            docker_client.ping()
             app.logger.info("Koneksi Docker SDK berhasil.")
         except docker.errors.DockerException as e:
             app.logger.error(f"Gagal terkoneksi ke Docker daemon via SDK: {e}")
-            docker_client = "ERROR" 
-    return docker_client if docker_client != "ERROR" else None
+            docker_client = "ERROR_CONNECTION"
+    return docker_client if docker_client != "ERROR_CONNECTION" else None
+
+def _is_self_target(target_name: str) -> bool:
+    if not CHATOP_CONTAINER_NAME or not target_name:
+        return False
+    
+    client = get_docker_client()
+    if not client:
+        return False 
+
+    try:
+        target_container = client.containers.get(target_name)
+        target_id = target_container.id
+        target_actual_name = target_container.name
+        if target_name == CHATOP_CONTAINER_NAME:
+            return True
+        
+        if target_actual_name == CHATOP_CONTAINER_NAME:
+             return True
+    
+        if target_id == CHATOP_CONTAINER_NAME or target_container.short_id == CHATOP_CONTAINER_NAME:
+            return True
+
+    except docker.errors.NotFound:
+        return False 
+    except Exception as e:
+        app.logger.error(f"Error saat memeriksa identitas diri kontainer: {e}")
+        return False 
+    return False
 
 
 def _format_container_list(containers):
@@ -95,21 +129,30 @@ def _format_container_list(containers):
     output = "CONTAINER ID\tIMAGE\t\tCOMMAND\t\tCREATED\t\tSTATUS\t\tPORTS\t\tNAMES\n"
     output += "----------------------------------------------------------------------------------------------------------------------\n"
     for container in containers:
-        name = container.name
-        image = container.attrs['Config']['Image']
+        if CHATOP_CONTAINER_NAME and (container.name == CHATOP_CONTAINER_NAME or container.short_id == CHATOP_CONTAINER_NAME or container.id == CHATOP_CONTAINER_NAME):
+            name_display = f"{container.name} (Ini adalah Aplikasi ChatOps)"
+        else:
+            name_display = container.name
+        
+        image_tags = container.image.tags
+        image_display = image_tags[0] if image_tags else container.attrs['Config']['Image'][:20]
+        
         command = container.attrs['Config']['Cmd']
         command_str = ' '.join(command) if command else ''
-        created = container.attrs['Created'][:19].replace('T', ' ') # Format datetime
+        created = container.attrs['Created'][:19].replace('T', ' ')
         status = container.status
         ports = container.ports
-        ports_str = []
+        ports_str_list = []
         if ports:
-            for internal_port, host_ports_list in ports.items():
+            for _internal_port, host_ports_list in ports.items():
                 if host_ports_list:
                     for host_port_info in host_ports_list:
-                        ports_str.append(f"{host_port_info['HostIp']}:{host_port_info['HostPort']}->{internal_port}")
+                        host_ip = host_port_info.get('HostIp', '0.0.0.0')
+                        host_port = host_port_info.get('HostPort', '')
+                        if host_ip == '::': host_ip = '[::]' # Format IPv6
+                        ports_str_list.append(f"{host_ip}:{host_port}->{_internal_port}")
         
-        output += f"{container.short_id}\t{image[:20]}\t{command_str[:20]}\t{created}\t{status[:20]}\t{', '.join(ports_str)[:20]}\t{name}\n"
+        output += f"{container.short_id}\t{image_display[:20]}\t{command_str[:20]}\t{created}\t{status[:20]}\t{', '.join(ports_str_list)[:20]}\t{name_display}\n"
     return output
 
 def _handle_list_containers(params: dict) -> tuple[str, str]:
@@ -141,6 +184,9 @@ def _handle_run_container(params: dict) -> tuple[str, str]:
     if not re.match(r"^[a-zA-Z0-9_.-]+$", name) or \
        not re.match(r"^[a-zA-Z0-9/:_.-]+$", image):
         return "", "Error: Nama kontainer/image mengandung karakter tidak valid."
+    
+    if CHATOP_CONTAINER_NAME and name == CHATOP_CONTAINER_NAME:
+        return "", f"Error: Tidak dapat menjalankan kontainer dengan nama yang sama dengan layanan ChatOps ('{CHATOP_CONTAINER_NAME}')."
 
     ports_dict = {}
     if ports_str:
@@ -149,18 +195,31 @@ def _handle_run_container(params: dict) -> tuple[str, str]:
         try:
             for p_map_str in ports_str.split(','):
                 host_port, container_port = p_map_str.strip().split(':')
-                ports_dict[f"{container_port.strip()}/tcp"] = int(host_port.strip()) 
+                ports_dict[f"{container_port.strip()}/tcp"] = int(host_port.strip())
         except ValueError:
             return "", "Error: Format port tidak valid (pastikan angka)."
 
-
     try:
         app.logger.info(f"Mencoba menjalankan image '{image}' sebagai kontainer '{name}' dengan port {ports_dict if ports_dict else 'tidak ada'}")
+        pulled_image = None
+        try:
+            client.images.get(image)
+        except docker.errors.ImageNotFound:
+            app.logger.info(f"Image '{image}' tidak ditemukan lokal, mencoba pull...")
+            try:
+                pulled_image = client.images.pull(image)
+                app.logger.info(f"Image '{image}' berhasil di-pull.")
+            except docker.errors.APIError as pull_error:
+                app.logger.error(f"Gagal pull image '{image}': {pull_error}")
+                return "", f"Error: Gagal pull image '{image}'. {pull_error.explanation or str(pull_error)}"
+
+
         container = client.containers.run(image, detach=True, name=name, ports=ports_dict if ports_dict else None)
-        return f"Kontainer '{container.name}' (ID: {container.short_id}) berhasil dijalankan dari image '{image}'.", ""
-    except docker.errors.ImageNotFound:
-        app.logger.warning(f"Image '{image}' tidak ditemukan saat mencoba run.")
-        return "", f"Error: Image '{image}' tidak ditemukan. Anda mungkin perlu melakukan 'pull image {image}' terlebih dahulu."
+        pull_msg = f" (Image '{image}' di-pull terlebih dahulu)" if pulled_image else ""
+        return f"Kontainer '{container.name}' (ID: {container.short_id}) berhasil dijalankan dari image '{image}'.{pull_msg}", ""
+    except docker.errors.ImageNotFound: # Should be caught by pre-pull check, but as a fallback
+        app.logger.warning(f"Image '{image}' tidak ditemukan saat mencoba run (setelah cek pull).")
+        return "", f"Error: Image '{image}' tidak ditemukan."
     except docker.errors.APIError as e:
         app.logger.error(f"Docker API Error saat run container: {e}")
         return "", f"Error Docker API: {e.explanation or str(e)}"
@@ -168,16 +227,19 @@ def _handle_run_container(params: dict) -> tuple[str, str]:
         app.logger.exception("Error tak terduga saat run container:")
         return "", f"Error tak terduga: {str(e)}"
 
-
 def _handle_stop_container(params: dict) -> tuple[str, str]:
     client = get_docker_client()
     if not client: return "", "Error: Tidak dapat terhubung ke Docker daemon."
     name = params.get("name")
     if not name: return "", "Error: Nama kontainer dibutuhkan."
     if not re.match(r"^[a-zA-Z0-9_.-]+$", name): return "", "Error: Nama kontainer mengandung karakter tidak valid."
+    
+    if _is_self_target(name):
+        return "", f"Error: Tidak diizinkan menghentikan kontainer ChatOps ('{CHATOP_CONTAINER_NAME}') sendiri."
+    
     try:
         container = client.containers.get(name)
-        container.stop()
+        container.stop(timeout=5)
         return f"Kontainer '{name}' berhasil dihentikan.", ""
     except docker.errors.NotFound:
         return "", f"Error: Kontainer '{name}' tidak ditemukan."
@@ -191,6 +253,10 @@ def _handle_remove_container(params: dict) -> tuple[str, str]:
     name = params.get("name")
     if not name: return "", "Error: Nama kontainer dibutuhkan."
     if not re.match(r"^[a-zA-Z0-9_.-]+$", name): return "", "Error: Nama kontainer mengandung karakter tidak valid."
+
+    if _is_self_target(name):
+        return "", f"Error: Tidak diizinkan menghapus kontainer ChatOps ('{CHATOP_CONTAINER_NAME}') sendiri."
+
     try:
         container = client.containers.get(name)
         if container.status == "running":
@@ -210,6 +276,11 @@ def _handle_view_logs(params: dict) -> tuple[str, str]:
     lines_str = params.get("lines", "50")
     if not name: return "", "Error: Nama kontainer dibutuhkan."
     if not re.match(r"^[a-zA-Z0-9_.-]+$", name): return "", "Error: Nama kontainer mengandung karakter tidak valid."
+    
+    # Membiarkan melihat log diri sendiri bisa berguna untuk debugging ChatOps
+    # if _is_self_target(name):
+    # return "", f"Error: Tidak diizinkan melihat log kontainer ChatOps ('{CHATOP_CONTAINER_NAME}') melalui perintah ini."
+
     try:
         lines = int(lines_str)
         if lines <=0: lines = 50
@@ -217,7 +288,7 @@ def _handle_view_logs(params: dict) -> tuple[str, str]:
         return "", "Error: Jumlah baris harus berupa angka positif."
     try:
         container = client.containers.get(name)
-        logs = container.logs(tail=lines).decode('utf-8').strip()
+        logs = container.logs(tail=lines, timestamps=True).decode('utf-8').strip()
         return logs if logs else "(Tidak ada log untuk ditampilkan)", ""
     except docker.errors.NotFound:
         return "", f"Error: Kontainer '{name}' tidak ditemukan."
@@ -246,8 +317,8 @@ def _handle_pull_image(params: dict) -> tuple[str, str]:
 def _format_image_list(images):
     if not images:
         return "Tidak ada image."
-    output = "REPOSITORY\tTAG\t\tIMAGE ID\tCREATED\t\tSIZE\n"
-    output += "-------------------------------------------------------------------------------------------\n"
+    output = "REPOSITORY\tTAG\t\tIMAGE ID\tCREATED\t\tSIZE (MB)\n"
+    output += "--------------------------------------------------------------------------------------------------\n"
     for img in images:
         repo_tags = img.tags
         if not repo_tags:
@@ -260,7 +331,7 @@ def _format_image_list(images):
         
         created_at = img.attrs['Created'][:19].replace('T', ' ')
         size_mb = round(img.attrs['Size'] / (1024 * 1024), 2)
-        output += f"{repo[:25]}\t{tag[:15]}\t{img.short_id[7:]}\t{created_at}\t{size_mb}MB\n"
+        output += f"{repo[:25]:<25}\t{tag[:15]:<15}\t{img.short_id[7:]}\t{created_at}\t{size_mb}\n"
     return output
 
 def _handle_list_images(params: dict) -> tuple[str, str]:
@@ -272,7 +343,6 @@ def _handle_list_images(params: dict) -> tuple[str, str]:
     except docker.errors.APIError as e:
         return "", f"Error Docker API: {e.explanation or str(e)}"
     except Exception as e: return "", f"Error tak terduga: {str(e)}"
-
 
 ACTION_HANDLERS = {
     "list_containers": _handle_list_containers,
@@ -309,7 +379,7 @@ def parse_and_execute_command(user_command_str: str) -> tuple[str, str]:
 def index():
     app.logger.info(f"Permintaan ke '/' dari {request.remote_addr}")
     client_status = get_docker_client() 
-    if client_status is None and docker_client == "ERROR":
+    if client_status is None and docker_client == "ERROR_CONNECTION": 
         app.logger.error("Docker client tidak bisa diinisialisasi pada startup.")
     return render_template('index.html', command_guide=COMMAND_GUIDE)
 
@@ -340,6 +410,6 @@ def handle_command_route():
         return jsonify({'error': internal_error_msg, 'output': '', 'received_command': data.get('command', '') if 'data' in locals() and data else '' }), 500
 
 if __name__ == '__main__':
-    get_docker_client() #
+    get_docker_client() 
     app.logger.info(f"Memulai server Flask pada {SERVER_HOST}:{SERVER_PORT} dengan mode debug: {DEBUG_MODE}")
     app.run(debug=DEBUG_MODE, host=SERVER_HOST, port=SERVER_PORT)
