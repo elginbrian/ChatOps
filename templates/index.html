@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatOps</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <style>
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+      .chat-message pre,
+      .command-guide-entry code {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+      }
+      body {
+        padding: 0;
+      }
+      .command-guide-entry p {
+        margin-bottom: 0.25rem;
+      }
+      .command-guide-entry code {
+        background-color: #1e293b;
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.25rem;
+        font-style: italic;
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body class="bg-gradient-to-br from-slate-900 to-black text-gray-200 font-sans flex flex-col justify-center items-center min-h-screen selection:bg-teal-500 selection:text-white">
+    <main class="w-full max-w-3xl h-[95vh] md:h-[90vh] max-h-[800px] bg-slate-800/80 backdrop-blur-md shadow-2xl rounded-xl p-0 flex flex-col overflow-hidden">
+      <header class="p-4 border-b border-slate-700/50 flex justify-between items-center">
+        <h1 class="text-xl md:text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-500">ChatOps</h1>
+        <button id="toggleGuideButton" class="text-sm text-teal-400 hover:text-teal-300 focus:outline-none flex items-center">
+          <ion-icon name="help-circle-outline" class="text-xl mr-1"></ion-icon>
+          Panduan
+        </button>
+      </header>
+
+      <div id="commandGuideModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-slate-700">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold text-teal-400">Panduan Perintah</h2>
+            <button id="closeGuideButton" class="text-slate-400 hover:text-white text-2xl">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </div>
+          <div id="commandGuideContent" class="space-y-4 text-sm"></div>
+        </div>
+      </div>
+
+      <section id="chatFeed" aria-live="polite" class="flex-grow p-3 md:p-4 space-y-2.5 overflow-y-auto bg-slate-900/60"></section>
+
+      <section aria-labelledby="command-input-heading" class="p-3 md:p-4 border-t border-slate-700/50 bg-slate-800/60">
+        <h2 id="command-input-heading" class="sr-only">Command Input</h2>
+        <form id="commandForm" class="flex items-center gap-2">
+          <label for="commandInput" class="sr-only">Masukkan perintah</label>
+          <input
+            type="text"
+            id="commandInput"
+            name="command"
+            class="flex-grow bg-slate-700/70 border border-slate-600 text-gray-100 placeholder-gray-400 p-2.5 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent focus:outline-none transition-shadow shadow-sm hover:shadow-md focus:shadow-lg text-sm"
+            placeholder="Ketik perintah atau lihat panduan..."
+            autocomplete="off"
+          />
+          <button
+            type="submit"
+            id="sendButton"
+            class="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-medium p-2.5 rounded-lg transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-teal-500 flex items-center justify-center h-[44px] aspect-square sm:aspect-auto sm:px-4"
+            aria-label="Kirim Perintah"
+          >
+            <span id="sendButtonText" class="hidden sm:inline">Kirim</span>
+            <ion-icon name="paper-plane-outline" id="sendIcon" class="text-lg sm:ml-1.5"></ion-icon>
+            <div id="loadingIndicator" class="hidden animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const commandForm = document.getElementById('commandForm');
+      const commandInput = document.getElementById('commandInput');
+      const sendButton = document.getElementById('sendButton');
+      const sendButtonText = document.getElementById('sendButtonText');
+      const sendIcon = document.getElementById('sendIcon');
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const chatFeed = document.getElementById('chatFeed');
+      const toggleGuideButton = document.getElementById('toggleGuideButton');
+      const commandGuideModal = document.getElementById('commandGuideModal');
+      const closeGuideButton = document.getElementById('closeGuideButton');
+      const commandGuideContent = document.getElementById('commandGuideContent');
+
+      const rawCommandGuide = {{ command_guide | tojson | safe }};
+
+      function populateCommandGuide() {
+          if (rawCommandGuide && rawCommandGuide.length > 0) {
+              rawCommandGuide.forEach(cmd => {
+                  const entryDiv = document.createElement('div');
+                  entryDiv.classList.add('command-guide-entry', 'p-3', 'bg-slate-700/50', 'rounded');
+
+                  const descP = document.createElement('p');
+                  descP.classList.add('text-slate-200');
+                  descP.textContent = cmd.description;
+                  entryDiv.appendChild(descP);
+
+                  const exampleP = document.createElement('p');
+                  exampleP.classList.add('text-slate-400');
+                  exampleP.innerHTML = `Contoh: <code>${cmd.example}</code>`;
+                  entryDiv.appendChild(exampleP);
+
+                  commandGuideContent.appendChild(entryDiv);
+              });
+          } else {
+              commandGuideContent.innerHTML = '<p class="text-slate-400">Panduan perintah tidak tersedia saat ini.</p>';
+          }
+      }
+
+      function createMessageElement(text, type) {
+          const article = document.createElement('article');
+          article.classList.add('chat-message', 'p-2', 'rounded-lg', 'max-w-[90%]', 'break-words');
+
+          const pre = document.createElement('pre');
+          pre.classList.add('font-mono');
+          pre.textContent = text;
+
+          switch (type) {
+              case 'user':
+                  article.classList.add('bg-slate-700/70', 'self-end', 'ml-auto');
+                  pre.classList.add('text-slate-100');
+                  pre.textContent = `> ${text}`;
+                  break;
+              case 'bot-output':
+                  article.classList.add('bg-green-800/50', 'self-start', 'mr-auto');
+                  pre.classList.add('text-green-300');
+                  break;
+              case 'bot-error':
+                  article.classList.add('bg-red-700/50', 'self-start', 'mr-auto');
+                  pre.classList.add('text-red-300');
+                  break;
+              case 'system-info':
+                  article.classList.add('bg-slate-600/60', 'self-start', 'mr-auto', 'italic');
+                  pre.classList.add('text-slate-400');
+                  break;
+              default:
+                  article.classList.add('bg-slate-700/40', 'self-start', 'mr-auto');
+                  pre.classList.add('text-slate-300');
+                  break;
+          }
+          article.appendChild(pre);
+          return article;
+      }
+
+      function appendToFeed(text, type = 'system-info') {
+          const messageElement = createMessageElement(text, type);
+          chatFeed.appendChild(messageElement);
+          setTimeout(() => {
+              chatFeed.scrollTop = chatFeed.scrollHeight;
+          }, 0);
+      }
+
+      function setLoadingState(isLoading) {
+          const isSmScreen = window.innerWidth >= 640;
+          if (isLoading) {
+              if(isSmScreen) sendButtonText.classList.add('hidden');
+              sendIcon.classList.add('hidden');
+              loadingIndicator.classList.remove('hidden');
+              sendButton.disabled = true;
+              commandInput.disabled = true;
+              sendButton.classList.add('cursor-not-allowed');
+          } else {
+              if(isSmScreen) sendButtonText.classList.remove('hidden');
+              sendIcon.classList.remove('hidden');
+              loadingIndicator.classList.add('hidden');
+              sendButton.disabled = false;
+              commandInput.disabled = false;
+              sendButton.classList.remove('cursor-not-allowed');
+              commandInput.focus();
+          }
+      }
+
+      async function handleCommandSubmit(event) {
+          if (event) event.preventDefault();
+
+          const commandText = commandInput.value.trim();
+          if (!commandText) return;
+
+          appendToFeed(commandText, 'user');
+          appendToFeed('Memproses...', 'system-info');
+          setLoadingState(true);
+
+          try {
+              const response = await fetch('/api/command', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json'
+                  },
+                  body: JSON.stringify({ command: commandText }),
+              });
+
+              const data = await response.json();
+
+              const processingMessages = Array.from(chatFeed.children).filter(el => el.textContent === 'Memproses...');
+              processingMessages.forEach(el => el.remove());
+
+              if (!response.ok && data.error) {
+                   appendToFeed(data.error, 'bot-error');
+              } else if (!response.ok) {
+                   const errorMsg = `Server Error: ${response.status} ${response.statusText}. Respons tidak valid.`;
+                   appendToFeed(errorMsg, 'bot-error');
+                   return;
+              } else {
+                  commandInput.value = '';
+                  if (data.output) {
+                      appendToFeed(data.output, 'bot-output');
+                  } else {
+                      if (!data.error) appendToFeed('(Tidak ada output standar dari perintah ini)', 'system-info');
+                  }
+                  if (data.error) {
+                      appendToFeed(data.error, 'bot-error');
+                  }
+              }
+          } catch (error) {
+              const processingMessages = Array.from(chatFeed.children).filter(el => el.textContent === 'Memproses...');
+              processingMessages.forEach(el => el.remove());
+
+              console.error('Fetch error:', error);
+              const networkErrorMsg = `Kesalahan Jaringan/Klien: ${error.message}. Pastikan server backend berjalan.`;
+              appendToFeed(networkErrorMsg, 'bot-error');
+          } finally {
+              setLoadingState(false);
+          }
+      }
+
+      commandForm.addEventListener('submit', handleCommandSubmit);
+
+      toggleGuideButton.addEventListener('click', () => {
+          commandGuideModal.classList.toggle('hidden');
+          commandGuideModal.classList.toggle('flex');
+      });
+      closeGuideButton.addEventListener('click', () => {
+          commandGuideModal.classList.add('hidden');
+          commandGuideModal.classList.remove('flex');
+      });
+      commandGuideModal.addEventListener('click', (event) => {
+          if (event.target === commandGuideModal) {
+              commandGuideModal.classList.add('hidden');
+              commandGuideModal.classList.remove('flex');
+          }
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+         appendToFeed("Selamat datang! Ketik perintah Anda atau klik 'Panduan'.", "system-info");
+         populateCommandGuide();
+      });
+    </script>
+  </body>
+</html>
