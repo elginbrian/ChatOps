@@ -1,11 +1,14 @@
 import google.generativeai as genai
 from flask import current_app
 from app.models.commands import COMMAND_GUIDE
-from app.api.handlers import ACTION_HANDLERS, INSPECT_ACTION_MAP
 import json
 import re
 
 def _create_dynamic_tools_from_guide():
+    """
+    Secara dinamis membuat daftar FunctionDeclaration dari COMMAND_GUIDE.
+    Ini memungkinkan Gemini untuk memanggil fungsi secara langsung, bukan menghasilkan string.
+    """
     function_declarations = []
     
     param_pattern = re.compile(r'\(\?P<(\w+)>')
@@ -26,7 +29,7 @@ def _create_dynamic_tools_from_guide():
             parameters={
                 "type": "object",
                 "properties": properties,
-                "required": params, 
+                "required": params,
             }
         )
         function_declarations.append(func)
@@ -34,9 +37,15 @@ def _create_dynamic_tools_from_guide():
     return genai.types.Tool(function_declarations=function_declarations)
 
 def _get_command_summary():
+    """Menyediakan ringkasan perintah untuk system prompt."""
     return "\n".join([f"- `{cmd['example']}`: {cmd['description']}" for cmd in COMMAND_GUIDE])
 
 def handle_gemini_request(user_prompt: str, history: list):
+    """
+    Menangani permintaan ke Gemini, menggunakan Function Calling yang telah diperbarui.
+    """
+    from app.api.handlers import ACTION_HANDLERS, INSPECT_ACTION_MAP
+
     api_key = current_app.config.get('GEMINI_API_KEY')
     if not api_key:
         return {"output": None, "error": "Error: GEMINI_API_KEY tidak diatur di server.", "output_type": "text"}
@@ -124,7 +133,7 @@ def handle_gemini_request(user_prompt: str, history: list):
                     output_type = "table"
                 elif "inspect" in action:
                     output_type = "inspect"
-                else: 
+                else:
                     output_type = "action_receipt"
 
                 tool_response = {"output": output_data, "error": error_str, "output_type": output_type}
