@@ -29,7 +29,7 @@ def parse_and_execute_command(user_command_str: str) -> dict:
                
                 output_data, error_str = ACTION_HANDLERS[action](params)
                 
-                output_type = "table" if action in ["list_containers", "list_images"] else "text"
+                output_type = "table" if action in ["list_containers", "list_images", "view_stats", "view_logs"] else "text"
                 
                 if not error_str and not output_data and output_type == "text": 
                     output_data = f"Perintah '{cmd_def.get('id', action)}' berhasil dieksekusi."

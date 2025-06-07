@@ -326,6 +326,86 @@
         return article;
       }
 
+       function createStatsTableElement(statsData) {
+        const article = createBaseMessageElement("self-start w-full");
+        const wrapper = document.createElement("div");
+        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
+        const tableContainer = document.createElement("div");
+        tableContainer.className = "overflow-x-auto";
+        const table = document.createElement("table");
+        table.className = "w-full text-left text-sm";
+
+        table.innerHTML = `
+          <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs">
+            <tr>
+              <th class="p-3">Kontainer</th>
+              <th class="p-3">CPU Usage</th>
+              <th class="p-3">Memory Usage</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--border-color)]"></tbody>
+        `;
+        const tbody = table.querySelector("tbody");
+
+        if (!statsData || statsData.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">Tidak ada statistik untuk ditampilkan.</td></tr>`;
+        } else {
+          statsData.forEach(s => {
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
+            tr.innerHTML = `
+              <td class="p-3 align-middle font-medium text-gray-200">${s.container_name}</td>
+              <td class="p-3 align-middle text-gray-400 font-mono">${s.cpu_usage}</td>
+              <td class="p-3 align-middle text-gray-400 font-mono">${s.mem_usage}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+        tableContainer.appendChild(table);
+        wrapper.appendChild(tableContainer);
+        article.append(createIcon("bar-chart-outline", "bg-green-800 text-white"), wrapper);
+        return article;
+      }
+
+      function createLogsTableElement(logsData) {
+        const article = createBaseMessageElement("self-start w-full");
+        const wrapper = document.createElement("div");
+        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
+        const tableContainer = document.createElement("div");
+        tableContainer.className = "overflow-x-auto max-h-[40vh]";
+        const table = document.createElement("table");
+        table.className = "w-full text-left text-sm";
+
+        table.innerHTML = `
+          <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs sticky top-0">
+            <tr>
+              <th class="p-3 w-1/4">Timestamp</th>
+              <th class="p-3 w-3/4">Log Entry</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--border-color)]"></tbody>
+        `;
+        const tbody = table.querySelector("tbody");
+
+        if (!logsData || logsData.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-500">Tidak ada log untuk ditampilkan.</td></tr>`;
+        } else {
+          logsData.forEach(l => {
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
+            tr.innerHTML = `
+              <td class="p-3 align-top text-gray-500 font-mono">${l.timestamp}</td>
+              <td class="p-3 align-top text-gray-300 font-mono whitespace-pre-wrap word-wrap break-all">${l.log_entry}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+        tableContainer.appendChild(table);
+        wrapper.appendChild(tableContainer);
+        article.append(createIcon("document-text-outline", "bg-yellow-800 text-white"), wrapper);
+        return article;
+      }
+
       function createTypingIndicator() {
         const article = createBaseMessageElement();
         article.id = "typingIndicator";
@@ -339,15 +419,24 @@
       function createBotResponse(data) {
         if (data.output_type === "table") {
             if (data.output && data.output.length > 0) {
-                if (data.output[0].hasOwnProperty('status')) {
+                const firstItem = data.output[0];
+                if (firstItem.hasOwnProperty('status')) {
                     return createTableElement(data.output);
                 }
-                if (data.output[0].hasOwnProperty('repository')) {
+                if (firstItem.hasOwnProperty('repository')) {
                     return createImageTableElement(data.output);
                 }
+                if (firstItem.hasOwnProperty('cpu_usage')) {
+                    return createStatsTableElement(data.output);
+                }
+                if (firstItem.hasOwnProperty('log_entry')) {
+                    return createLogsTableElement(data.output);
+                }
             }
-            if (data.received_command && data.received_command.includes("image")) {
-                 return createImageTableElement([]);
+            if (data.received_command) {
+                 if (data.received_command.includes("image")) return createImageTableElement([]);
+                 if (data.received_command.includes("log")) return createLogsTableElement([]);
+                 if (data.received_command.includes("stats")) return createStatsTableElement([]);
             }
             return createTableElement([]);
         }

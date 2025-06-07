@@ -192,39 +192,51 @@ def remove_container(params: dict) -> tuple[str, str]:
         return "", f"Error Docker API: {e.explanation or str(e)}"
     except Exception as e: return "", f"Error tak terduga: {str(e)}"
 
-def view_logs(params: dict) -> tuple[str, str]:
+def view_logs(params: dict) -> tuple[list, str]:
     client = get_docker_client()
-    if not client: return "", "Error: Tidak dapat terhubung ke Docker daemon."
+    if not client: return [], "Error: Tidak dapat terhubung ke Docker daemon."
     name = params.get("name")
     lines_str = params.get("lines") or "50"
-    if not name: return "", "Error: Nama kontainer dibutuhkan."
-    if not re.match(r"^[a-zA-Z0-9_.-]+$", name): return "", "Error: Nama kontainer mengandung karakter tidak valid."
+    if not name: return [], "Error: Nama kontainer dibutuhkan."
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", name): return [], "Error: Nama kontainer mengandung karakter tidak valid."
     
     try:
         lines = int(lines_str)
         if lines <=0: lines = 50
     except ValueError:
-        return "", "Error: Jumlah baris harus berupa angka positif."
+        return [], "Error: Jumlah baris harus berupa angka positif."
     try:
         container = client.containers.get(name)
-        logs = container.logs(tail=lines, timestamps=True).decode('utf-8').strip()
-        return logs if logs else "(Tidak ada log untuk ditampilkan)", ""
-    except docker.errors.NotFound:
-        return "", f"Error: Kontainer '{name}' tidak ditemukan."
-    except docker.errors.APIError as e:
-        return "", f"Error Docker API: {e.explanation or str(e)}"
-    except Exception as e: return "", f"Error tak terduga: {str(e)}"
+        logs_raw = container.logs(tail=lines, timestamps=True).decode('utf-8').strip()
+        if not logs_raw:
+            return [], ""
 
-def view_stats(params: dict) -> tuple[str, str]:
+        log_list = []
+        for line in logs_raw.split('\n'):
+            if 'Z ' in line:
+                parts = line.split('Z ', 1)
+                timestamp = parts[0] + 'Z'
+                entry = parts[1]
+                log_list.append({"timestamp": timestamp, "log_entry": entry})
+            else:
+                log_list.append({"timestamp": "-", "log_entry": line})
+        return log_list, ""
+    except docker.errors.NotFound:
+        return [], f"Error: Kontainer '{name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        return [], f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e: return [], f"Error tak terduga: {str(e)}"
+
+def view_stats(params: dict) -> tuple[list, str]:
     client = get_docker_client()
     if not client:
-        return "", "Error: Tidak dapat terhubung ke Docker daemon."
+        return [], "Error: Tidak dapat terhubung ke Docker daemon."
     name = params.get("name")
-    if not name: return "", "Error: Nama kontainer dibutuhkan."
+    if not name: return [], "Error: Nama kontainer dibutuhkan."
     try:
         container = client.containers.get(name)
         if container.status != "running":
-            return "", f"Error: Kontainer '{name}' tidak sedang berjalan."
+            return [], f"Error: Kontainer '{name}' tidak sedang berjalan."
         stats = container.stats(stream=False)
         cpu_usage = stats['cpu_stats']['cpu_usage']['total_usage']
         system_cpu_usage = stats['cpu_stats']['system_cpu_usage']
@@ -245,19 +257,17 @@ def view_stats(params: dict) -> tuple[str, str]:
             
             cpu_percent = (cpu_delta / system_delta) * number_cpus * 100.0
 
-        output = (
-            f"Statistik untuk Kontainer: {container.name}\n"
-            f"---------------------------------\n"
-            f"CPU Usage: {cpu_percent:.2f}%\n"
-            f"Memory Usage: {mem_usage:.2f} MB / {mem_limit:.2f} MB"
-        )
-        return output, ""
+        stats_data = [{
+            "container_name": container.name,
+            "cpu_usage": f"{cpu_percent:.2f}%",
+            "mem_usage": f"{mem_usage:.2f} MB / {mem_limit:.2f} MB"
+        }]
+        return stats_data, ""
     except docker.errors.NotFound:
-        return "", f"Error: Kontainer '{name}' tidak ditemukan."
+        return [], f"Error: Kontainer '{name}' tidak ditemukan."
     except Exception as e:
         current_app.logger.error(f"Error saat mengambil statistik: {e}")
-        return "", f"Error tak terduga: {str(e)}"
-
+        return [], f"Error tak terduga: {str(e)}"
 
 def pull_image(params: dict) -> tuple[str, str]:
     client = get_docker_client()
