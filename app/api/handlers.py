@@ -35,6 +35,28 @@ INSPECT_ACTION_MAP = {
     "network": "inspect_network",
 }
 
+def handle_docker_status_check() -> tuple[str, str]:
+    containers, err_c = container_manager.list_containers({"all": True})
+    images, err_i = image_manager.list_images({})
+    volumes, err_v = volume_manager.list_volumes({})
+
+    if err_c or err_i or err_v:
+        return None, "Gagal mengambil sebagian data status Docker."
+
+    status_data = {
+        "total_containers": len(containers) if containers else 0,
+        "running_containers": len([c for c in containers if c['status'].lower().startswith('up') or c['status'].lower().startswith('running')]) if containers else 0,
+        "total_images": len(images) if images else 0,
+        "total_volumes": len(volumes) if volumes else 0,
+    }
+    
+    summary, error = gemini_client.summarize_docker_status(status_data)
+    
+    if error:
+        return None, error
+        
+    return summary, None
+
 def parse_and_execute_command(user_command_str: str, history: list = None) -> dict:
     normalized_command = user_command_str.lower().strip()
     
@@ -66,6 +88,10 @@ def parse_and_execute_command(user_command_str: str, history: list = None) -> di
                 return {"output": output_data, "error": error_str, "output_type": output_type}
             else:
                 return {"output": None, "error": f"Error: Aksi '{action}' belum terdefinisi di backend.", "output_type": "text"}
+
+    if "cek kondisi" in normalized_command or "status docker" in normalized_command:
+        output_data, error_str = handle_docker_status_check()
+        return {"output": output_data, "error": error_str, "output_type": "gemini_text"}
 
     current_app.logger.info(f"Command '{user_command_str}' not found in guide. Passing to Gemini.")
     return gemini_client.handle_gemini_request(user_command_str, history or [])

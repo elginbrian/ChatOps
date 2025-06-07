@@ -5,10 +5,6 @@ import json
 import re
 
 def _create_dynamic_tools_from_guide():
-    """
-    Secara dinamis membuat daftar FunctionDeclaration dari COMMAND_GUIDE.
-    Ini memungkinkan Gemini untuk memanggil fungsi secara langsung, bukan menghasilkan string.
-    """
     function_declarations = []
     
     param_pattern = re.compile(r'\(\?P<(\w+)>')
@@ -37,13 +33,33 @@ def _create_dynamic_tools_from_guide():
     return genai.types.Tool(function_declarations=function_declarations)
 
 def _get_command_summary():
-    """Menyediakan ringkasan perintah untuk system prompt."""
     return "\n".join([f"- `{cmd['example']}`: {cmd['description']}" for cmd in COMMAND_GUIDE])
 
+def summarize_docker_status(status_data: dict):
+    api_key = current_app.config.get('GEMINI_API_KEY')
+    if not api_key:
+        return None, "Error: GEMINI_API_KEY tidak diatur di server."
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+
+    prompt = f"""
+    Anda adalah asisten Docker. Berdasarkan data JSON berikut, buatlah sebuah ringkasan status yang singkat, jelas, dan ramah untuk pengguna.
+
+    Data Status:
+    {json.dumps(status_data, indent=2)}
+
+    Contoh output yang baik: "Saat ini, Anda memiliki {status_data.get('total_containers', 0)} kontainer, dimana {status_data.get('running_containers', 0)} sedang berjalan. Selain itu, terdapat {status_data.get('total_images', 0)} image dan {status_data.get('total_volumes', 0)} volume di sistem Anda."
+    Jawab dalam Bahasa Indonesia.
+    """
+    try:
+        response = model.generate_content(prompt)
+        return response.text, None
+    except Exception as e:
+        current_app.logger.error(f"Error saat meringkas status Docker: {e}", exc_info=True)
+        return None, "Gagal saat membuat ringkasan status dari AI."
+
 def handle_gemini_request(user_prompt: str, history: list):
-    """
-    Menangani permintaan ke Gemini, menggunakan Function Calling yang telah diperbarui.
-    """
     from app.api.handlers import ACTION_HANDLERS, INSPECT_ACTION_MAP
 
     api_key = current_app.config.get('GEMINI_API_KEY')
@@ -63,6 +79,7 @@ def handle_gemini_request(user_prompt: str, history: list):
     {_get_command_summary()}
 
     Analyze the user's prompt and decide whether to answer directly or to use one of the available functions.
+    IMPORTANT: If the user asks for "help", "bantuan", or "command list", you MUST NOT list the commands yourself. Instead, reply with the text: "Tentu, Anda dapat melihat semua daftar perintah yang tersedia dengan menekan tombol 'Panduan Perintah' di sidebar."
     """
 
     safety_settings = {
