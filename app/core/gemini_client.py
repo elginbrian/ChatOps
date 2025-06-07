@@ -88,7 +88,7 @@ def handle_gemini_request(user_prompt: str, history: list):
                 tool_response = parse_and_execute_command(command_to_run, is_gemini_call=True)
                 
                 final_response = chat.send_message(
-                    genai.types.Part.from_function_response(
+                    genai.Part.from_function_response(
                         name="execute_docker_command",
                         response={"result": tool_response}
                     )
