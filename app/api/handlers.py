@@ -35,7 +35,7 @@ INSPECT_ACTION_MAP = {
     "network": "inspect_network",
 }
 
-def parse_and_execute_command(user_command_str: str, history: list = None, is_gemini_call: bool = False) -> dict:
+def parse_and_execute_command(user_command_str: str, history: list = None) -> dict:
     normalized_command = user_command_str.lower().strip()
     
     for cmd_def in COMMAND_GUIDE:
@@ -67,8 +67,5 @@ def parse_and_execute_command(user_command_str: str, history: list = None, is_ge
             else:
                 return {"output": None, "error": f"Error: Aksi '{action}' belum terdefinisi di backend.", "output_type": "text"}
 
-    if not is_gemini_call:
-        current_app.logger.info(f"Command '{user_command_str}' not found. Passing to Gemini.")
-        return gemini_client.handle_gemini_request(user_command_str, history or [])
-
-    return {"output": None, "error": f"Error: Perintah '{user_command_str}' tidak dikenali atau formatnya salah.", "output_type": "text"}
+    current_app.logger.info(f"Command '{user_command_str}' not found in guide. Passing to Gemini.")
+    return gemini_client.handle_gemini_request(user_command_str, history or [])
