@@ -5,7 +5,7 @@ COMMAND_GUIDE = [
         "action": "list_containers",
         "params_map": {"all": True},
         "description": "Menampilkan semua kontainer (berjalan dan berhenti).",
-        "example": "lihat semua containers / docker ps -a"
+        "example": "lihat semua containers"
     },
     {
         "id": "list_running_containers",
@@ -13,56 +13,91 @@ COMMAND_GUIDE = [
         "action": "list_containers",
         "params_map": {"all": False},
         "description": "Menampilkan hanya kontainer yang sedang berjalan.",
-        "example": "list containers / docker ps"
+        "example": "list containers"
     },
     {
-        "id": "run_container_from_name",
+        "id": "run_container_name_first",
         "pattern": r"^(?:jalankan|nyalakan|start|buat|run)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+)\s+(?:dari\s+image\s+)?(?P<image>[a-zA-Z0-9/:_.-]+)(?:\s+dengan\s+port(?:s)?\s+(?P<ports>\d{1,5}:\d{1,5}(?:,\d{1,5}:\d{1,5})*))?$",
         "action": "run_container",
         "description": "Menjalankan kontainer baru (Format: run NAMA dari IMAGE).",
-        "example": "run webku nginx:latest dengan port 8080:80"
+        "example": "run webku nginx:latest"
     },
     {
-        "id": "run_container_from_image",
+        "id": "run_container_image_first",
         "pattern": r"^(?:jalankan|nyalakan|start|buat|run)\s+(?:dari\s+)?image\s+(?P<image>[a-zA-Z0-9/:_.-]+)\s+(?:sebagai|as)\s+(?:(?:kontainer|container)\s+)?(?P<name>[a-zA-Z0-9_.-]+)(?:\s+dengan\s+port(?:s)?\s+(?P<ports>\d{1,5}:\d{1,5}(?:,\d{1,5}:\d{1,5})*))?$",
         "action": "run_container",
         "description": "Menjalankan kontainer baru (Format: run image IMAGE as NAMA).",
         "example": "run image nginx:latest as webku"
     },
     {
-        "id": "start_container",
-        "pattern": r"^(?:(?:(?:hidupkan|nyalakan|start|mulai)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+))|(?:(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+(?:hidupkan|nyalakan|start|mulai)))$",
+        "id": "start_container_verb_first",
+        "pattern": r"^(?:hidupkan|nyalakan|start|mulai)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+)$",
         "action": "start_container",
-        "description": "Menghidupkan kembali kontainer yang sudah berhenti.",
-        "example": "start webku / container webku start"
+        "description": "Menghidupkan kontainer (Format: start NAMA).",
+        "example": "start webku"
     },
     {
-        "id": "stop_container",
-        "pattern": r"^(?:(?:(?:hentikan|matikan|stop)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+))|(?:(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+(?:hentikan|matikan|stop)))$",
+        "id": "start_container_noun_first",
+        "pattern": r"^(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+(?:hidupkan|nyalakan|start|mulai)$",
+        "action": "start_container",
+        "description": "Menghidupkan kontainer (Format: container NAMA start).",
+        "example": "container webku start"
+    },
+    {
+        "id": "stop_container_verb_first",
+        "pattern": r"^(?:hentikan|matikan|stop)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+)$",
         "action": "stop_container",
-        "description": "Menghentikan kontainer yang sedang berjalan.",
-        "example": "stop webku / container webku stop"
+        "description": "Menghentikan kontainer (Format: stop NAMA).",
+        "example": "stop webku"
     },
     {
-        "id": "remove_container",
-        "pattern": r"^(?:(?:(?:hapus|buang|remove|rm)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+))|(?:(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+(?:hapus|buang|remove|rm)))$",
+        "id": "stop_container_noun_first",
+        "pattern": r"^(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+(?:hentikan|matikan|stop)$",
+        "action": "stop_container",
+        "description": "Menghentikan kontainer (Format: container NAMA stop).",
+        "example": "container webku stop"
+    },
+    {
+        "id": "remove_container_verb_first",
+        "pattern": r"^(?:hapus|buang|remove|rm)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+)$",
         "action": "remove_container",
-        "description": "Menghapus kontainer yang sudah berhenti.",
-        "example": "rm webku_lama / container webku_lama rm"
+        "description": "Menghapus kontainer (Format: rm NAMA).",
+        "example": "rm webku_lama"
     },
     {
-        "id": "view_logs",
-        "pattern": r"^(?:(?:(?:(?:lihat|tampilkan)\s+log(?:s)?|docker\s+logs)\s+(?:(?:dari\s+)?(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+))|(?:(?:lihat|tampilkan)\s+(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+log(?:s)?))(?:\s+sebanyak\s+(?P<lines>\d+)\s+baris)?$",
+        "id": "remove_container_noun_first",
+        "pattern": r"^(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+(?:hapus|buang|remove|rm)$",
+        "action": "remove_container",
+        "description": "Menghapus kontainer (Format: container NAMA rm).",
+        "example": "container webku_lama rm"
+    },
+    {
+        "id": "view_logs_verb_first",
+        "pattern": r"^(?:(?:lihat|tampilkan)\s+log(?:s)?|docker\s+logs)\s+(?:(?:dari\s+)?(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+)(?:\s+sebanyak\s+(?P<lines>\d+)\s+baris)?$",
         "action": "view_logs",
-        "description": "Menampilkan log dari sebuah kontainer. Opsional: 'sebanyak JUMLAH baris'.",
-        "example": "lihat log container webku / lihat container webku log"
+        "description": "Melihat log kontainer (Format: lihat log NAMA).",
+        "example": "lihat log webku"
     },
     {
-        "id": "view_stats",
-        "pattern": r"^(?:(?:(?:(?:lihat|tampilkan)\s+stats|docker\s+stats)\s+(?:(?:dari\s+)?(?:kontainer|container)\s+)?(?P<name>[a-zA-Z0-9_.-]+))|(?:(?:lihat|tampilkan)\s+(?:kontainer|container)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+stats))$",
+        "id": "view_logs_noun_first",
+        "pattern": r"^(?:lihat|tampilkan)\s+(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+log(?:s)?(?:\s+sebanyak\s+(?P<lines>\d+)\s+baris)?$",
+        "action": "view_logs",
+        "description": "Melihat log kontainer (Format: lihat container NAMA log).",
+        "example": "lihat container webku log"
+    },
+    {
+        "id": "view_stats_verb_first",
+        "pattern": r"^(?:(?:lihat|tampilkan)\s+stats|docker\s+stats)\s+(?:(?:dari\s+)?(?:kontainer|container)\s+)?(?P<name>[a-zA-Z0-9_.-]+)$",
         "action": "view_stats",
-        "description": "Menampilkan statistik sumber daya dari sebuah kontainer.",
-        "example": "lihat stats container webku / lihat container webku stats"
+        "description": "Melihat statistik kontainer (Format: lihat stats NAMA).",
+        "example": "lihat stats webku"
+    },
+    {
+        "id": "view_stats_noun_first",
+        "pattern": r"^(?:lihat|tampilkan)\s+(?:kontainer|container)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+stats$",
+        "action": "view_stats",
+        "description": "Melihat statistik kontainer (Format: lihat container NAMA stats).",
+        "example": "lihat container webku stats"
     },
     {
         "id": "pull_image",
@@ -82,14 +117,14 @@ COMMAND_GUIDE = [
         "id": "compose_up",
         "pattern": r"^compose-?up(?:\s+(?P<service>[a-zA-Z0-9_.-]+))?$",
         "action": "compose_up",
-        "description": "Menjalankan 'docker-compose up -d'. Menerima 'compose up' dan 'compose-up'.",
+        "description": "Menjalankan 'docker-compose up -d'.",
         "example": "compose-up my_service"
     },
     {
         "id": "compose_down",
         "pattern": r"^compose-?down$",
         "action": "compose_down",
-        "description": "Menjalankan 'docker-compose down'. Menerima 'compose down' dan 'compose-down'.",
+        "description": "Menjalankan 'docker-compose down'.",
         "example": "compose-down"
     }
 ]
