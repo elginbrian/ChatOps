@@ -1,9 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- STATE ---
   let activeConversationId = null;
   let conversations = [];
 
-  // --- SELECTORS ---
   const commandForm = document.getElementById("commandForm");
   const commandInput = document.getElementById("commandInput");
   const sendButton = document.getElementById("sendButton");
@@ -12,11 +10,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatFeed = document.getElementById("chatFeed");
   const chatHeader = document.getElementById("chatHeader");
 
-  // Sidebar selectors
   const newChatButton = document.getElementById("newChatButton");
   const conversationList = document.getElementById("conversationList");
 
-  // Modal selectors
   const toggleGuideButton = document.getElementById("toggleGuideButton");
   const commandGuideModal = document.getElementById("commandGuideModal");
   const closeGuideButton = document.getElementById("closeGuideButton");
@@ -24,7 +20,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const rawCommandGuide = JSON.parse(document.getElementById("command-guide-data").textContent);
 
-  // --- UTILITY & RENDER FUNCTIONS ---
   function showToast(message, isError = false) {
     const container = document.getElementById("toast-container");
     const toast = document.createElement("div");
@@ -88,7 +83,13 @@ document.addEventListener("DOMContentLoaded", () => {
         iconColor = "bg-gray-700 text-gray-200";
         contentClass = "bg-[var(--bg-tertiary)] text-gray-400 p-3 rounded-t-xl rounded-r-xl italic text-sm";
         break;
-      default:
+      case "gemini-output":
+        iconName = "sparkles-outline";
+        iconColor = "bg-indigo-800 text-white";
+        contentClass = "gemini-content bg-[var(--bg-tertiary)] text-gray-300 p-3 rounded-t-xl rounded-r-xl text-sm leading-relaxed";
+        content.innerHTML = marked.parse(text || "");
+        break;
+      default: // "bot-output"
         iconName = "logo-docker";
         iconColor = "bg-blue-800 text-white";
         contentClass = "bg-[var(--bg-tertiary)] text-gray-300 p-3 rounded-t-xl rounded-r-xl";
@@ -331,6 +332,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return createInspectOutputElement(data.output, objectName);
       case "text":
         return createBotTextMessage(data.output, "bot-output");
+      case "gemini_text":
+        return createBotTextMessage(data.output, "gemini-output");
       default:
         return createBotTextMessage(`Tipe output tidak dikenali: ${data.output_type}`, "bot-error");
     }

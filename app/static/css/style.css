@@ -106,3 +106,42 @@ body {
 input[type="text"] {
   font-size: 16px;
 }
+
+.gemini-content p {
+  margin-bottom: 0.75rem;
+}
+.gemini-content p:last-child {
+  margin-bottom: 0;
+}
+
+.gemini-content ul,
+.gemini-content ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.75rem;
+  list-style: revert;
+}
+
+.gemini-content li {
+  margin-bottom: 0.25rem;
+}
+
+.gemini-content code {
+  background-color: var(--bg-secondary);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.875em;
+}
+
+.gemini-content pre {
+  background-color: var(--bg-secondary);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.gemini-content pre code {
+  padding: 0;
+  background-color: transparent;
+}

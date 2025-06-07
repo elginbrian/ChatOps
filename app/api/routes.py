@@ -37,7 +37,11 @@ def handle_command_route():
 
         current_app.logger.info(f"Menerima perintah: '{user_command_str}' untuk conv_id: {conv_id}")
 
-        result = parse_and_execute_command(user_command_str)
+        conversation_history = []
+        if conv_id:
+            conversation_history = history_manager.get_conversation_messages(conv_id)
+
+        result = parse_and_execute_command(user_command_str, history=conversation_history)
 
         if conv_id:
             history_manager.add_message_to_conversation(conv_id, user_command_str, result)

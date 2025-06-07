@@ -1,6 +1,7 @@
 import re
 from app.models.commands import COMMAND_GUIDE
 from app.core import container_manager, image_manager, compose_manager, volume_manager, network_manager, system_manager, history_manager
+from app.core import gemini_client
 from flask import current_app
 
 ACTION_HANDLERS = {
@@ -12,21 +13,16 @@ ACTION_HANDLERS = {
     "view_logs": container_manager.view_logs,
     "view_stats": container_manager.view_stats,
     "inspect_container": container_manager.inspect_container,
-
     "pull_image": image_manager.pull_image,
     "list_images": image_manager.list_images,
     "inspect_image": image_manager.inspect_image,
-
     "list_volumes": volume_manager.list_volumes,
     "remove_volume": volume_manager.remove_volume,
     "inspect_volume": volume_manager.inspect_volume,
-
     "list_networks": network_manager.list_networks,
     "inspect_network": network_manager.inspect_network,
-
     "compose_up": compose_manager.compose_up,
     "compose_down": compose_manager.compose_down,
-
     "prune_system": system_manager.prune_system,
     "clear_history": history_manager.clear_history,
 }
@@ -39,8 +35,9 @@ INSPECT_ACTION_MAP = {
     "network": "inspect_network",
 }
 
-def parse_and_execute_command(user_command_str: str) -> dict:
+def parse_and_execute_command(user_command_str: str, history: list = None, is_gemini_call: bool = False) -> dict:
     normalized_command = user_command_str.lower().strip()
+    
     for cmd_def in COMMAND_GUIDE:
         match = re.fullmatch(cmd_def["pattern"], normalized_command)
         if match:
@@ -57,7 +54,6 @@ def parse_and_execute_command(user_command_str: str) -> dict:
             if action in ACTION_HANDLERS:
                 if "params_map" in cmd_def:
                     params.update(cmd_def["params_map"])
-
                 output_data, error_str = ACTION_HANDLERS[action](params)
 
                 output_type = "text"
@@ -67,13 +63,12 @@ def parse_and_execute_command(user_command_str: str) -> dict:
                     output_type = "action_receipt"
                 elif "inspect" in action:
                     output_type = "inspect"
-
-                return {
-                    "output": output_data,
-                    "error": error_str,
-                    "output_type": output_type
-                }
+                return {"output": output_data, "error": error_str, "output_type": output_type}
             else:
                 return {"output": None, "error": f"Error: Aksi '{action}' belum terdefinisi di backend.", "output_type": "text"}
+
+    if not is_gemini_call:
+        current_app.logger.info(f"Command '{user_command_str}' not found. Passing to Gemini.")
+        return gemini_client.handle_gemini_request(user_command_str, history or [])
 
     return {"output": None, "error": f"Error: Perintah '{user_command_str}' tidak dikenali atau formatnya salah.", "output_type": "text"}
