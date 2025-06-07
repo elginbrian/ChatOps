@@ -8,6 +8,8 @@ services:
       - "5000:5000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      HOSTNAME: chatops_service_container
+      - .:/app
+    working_dir: /app
+    env_file:
+      - .env
     restart: unless-stopped
