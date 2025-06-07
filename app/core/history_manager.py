@@ -4,32 +4,35 @@ import time
 import uuid
 from flask import current_app
 
-HISTORY_FILE_PATH = os.path.join(current_app.instance_path, 'chat_history.json')
+def _get_history_file_path():
+    return os.path.join(current_app.instance_path, 'chat_history.json')
 
 def _get_or_create_history_file():
+    history_file = _get_history_file_path() 
     try:
         os.makedirs(current_app.instance_path)
     except OSError:
-        pass  
+        pass
     
-    if not os.path.exists(HISTORY_FILE_PATH):
+    if not os.path.exists(history_file):
         initial_data = {"conversations": {}, "last_active_id": None}
-        with open(HISTORY_FILE_PATH, 'w') as f:
+        with open(history_file, 'w', encoding='utf-8') as f:
             json.dump(initial_data, f, indent=2)
         return initial_data
     
     try:
-        with open(HISTORY_FILE_PATH, 'r', encoding='utf-8') as f:
+        with open(history_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return {"conversations": {}, "last_active_id": None}
 
 def _save_history_data(data):
-    with open(HISTORY_FILE_PATH, 'w', encoding='utf-8') as f:
+    history_file = _get_history_file_path()
+    with open(history_file, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def get_conversations_list():
-    data = _get_or_create_history_file()
+    data = _get_or_create_history_file() 
     last_active_id = data.get('last_active_id')
     
     conv_list = [
@@ -52,7 +55,7 @@ def get_conversation_messages(conv_id):
 
 def set_last_active(conv_id):
     data = _get_or_create_history_file()
-    if conv_id in data['conversations']:
+    if conv_id in data.get("conversations", {}):
         data['last_active_id'] = conv_id
         _save_history_data(data)
 
