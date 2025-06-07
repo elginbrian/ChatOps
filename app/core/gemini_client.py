@@ -135,8 +135,13 @@ def handle_gemini_request(user_prompt: str, history: list):
                         params.update(cmd_def["params_map"])
                     
                     output_data, error_str = ACTION_HANDLERS[action](params)
-                    
-                    func_response = FunctionResponse(name=command_id, response={{"data": output_data, "error": error_str}})
+                   
+                    serialized_output = json.dumps(output_data)
+
+                    func_response = FunctionResponse(
+                        name=command_id, 
+                        response={{"data": serialized_output, "error": error_str}}
+                    )
                     tool_responses.append(Part(function_response=func_response))
                 else:
                     func_response = FunctionResponse(name=command_id, response={{"status": "error", "message": f"Aksi untuk '{{command_id}}' tidak terdefinisi."}})
