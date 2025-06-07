@@ -98,9 +98,9 @@ def handle_gemini_request(user_prompt: str, history: list):
     
     gemini_history = []
     for item in history:
-        gemini_history.append({{"role": "user", "parts": [{{"text": item['user_command']}}]}})
-        bot_response_text = json.dumps(item.get('bot_response', {{}}).get('output'))
-        gemini_history.append({{"role": "model", "parts": [{{"text": bot_response_text}}]}})
+        gemini_history.append({"role": "user", "parts": [{"text": item['user_command']}]})
+        bot_response_text = json.dumps(item.get('bot_response', {}).get('output'))
+        gemini_history.append({"role": "model", "parts": [{"text": bot_response_text}]})
 
     chat = model.start_chat(history=gemini_history)
     
@@ -116,12 +116,12 @@ def handle_gemini_request(user_prompt: str, history: list):
                 command_id = function_call.name
                 params = dict(function_call.args)
                 
-                current_app.logger.info(f"Gemini calling function '{{command_id}}' with params: {{params}}")
+                current_app.logger.info(f"Gemini calling function '{command_id}' with params: {params}")
 
                 cmd_def = next((cmd for cmd in COMMAND_GUIDE if cmd["id"] == command_id), None)
                 
                 if not cmd_def:
-                    func_response = FunctionResponse(name=command_id, response={{"status": "error", "message": f"Fungsi '{{command_id}}' tidak ditemukan."}})
+                    func_response = FunctionResponse(name=command_id, response={"status": "error", "message": f"Fungsi '{command_id}' tidak ditemukan."})
                     tool_responses.append(Part(function_response=func_response))
                     continue
 
@@ -135,16 +135,16 @@ def handle_gemini_request(user_prompt: str, history: list):
                         params.update(cmd_def["params_map"])
                     
                     output_data, error_str = ACTION_HANDLERS[action](params)
-                   
+                    
                     serialized_output = json.dumps(output_data)
 
                     func_response = FunctionResponse(
                         name=command_id, 
-                        response={{"data": serialized_output, "error": error_str}}
+                        response={"data": serialized_output, "error": error_str}
                     )
                     tool_responses.append(Part(function_response=func_response))
                 else:
-                    func_response = FunctionResponse(name=command_id, response={{"status": "error", "message": f"Aksi untuk '{{command_id}}' tidak terdefinisi."}})
+                    func_response = FunctionResponse(name=command_id, response={"status": "error", "message": f"Aksi untuk '{command_id}' tidak terdefinisi."})
                     tool_responses.append(Part(function_response=func_response))
                 
             response = chat.send_message(tool_responses)
@@ -155,16 +155,16 @@ def handle_gemini_request(user_prompt: str, history: list):
             json_data = json.loads(final_text)
             if isinstance(json_data, dict) and json_data.get("type") == "table":
                 current_app.logger.info("Gemini generated a table.")
-                return {{"output": json_data.get("data"), "error": None, "output_type": "gemini_table"}}
+                return {"output": json_data.get("data"), "error": None, "output_type": "gemini_table"}
         except json.JSONDecodeError:
             pass
         
-        return {{"output": final_text, "error": None, "output_type": "gemini_text"}}
+        return {"output": final_text, "error": None, "output_type": "gemini_text"}
 
     except Exception as e:
-        current_app.logger.error(f"An unexpected error occurred with Gemini API: {{e}}", exc_info=True)
+        current_app.logger.error(f"An unexpected error occurred with Gemini API: {e}", exc_info=True)
         try:
-            current_app.logger.error(f"Last Gemini Response before error: {{response}}")
+            current_app.logger.error(f"Last Gemini Response before error: {response}")
         except NameError:
             pass
-        return {{"output": None, "error": f"An unexpected error occurred with the Gemini API. Check server logs for details.", "output_type": "text"}}
+        return {"output": None, "error": f"An unexpected error occurred with the Gemini API. Check server logs for details.", "output_type": "text"}
