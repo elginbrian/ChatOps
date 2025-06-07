@@ -8,7 +8,6 @@
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https.unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <style>
-      /* --- PERUBAHAN ANIMASI DIMULAI DI SINI --- */
       @keyframes fadeInUp {
         from {
           opacity: 0;
@@ -56,7 +55,29 @@
       .typing-dot:nth-child(2) {
         animation-delay: -0.16s;
       }
-      /* --- PERUBAHAN ANIMASI BERAKHIR DI SINI --- */
+
+      @keyframes toast-in {
+        from {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      @keyframes toast-out {
+        to {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+      }
+      .toast {
+        animation: toast-in 0.3s ease-out forwards;
+      }
+      .toast.closing {
+        animation: toast-out 0.3s ease-in forwards;
+      }
 
       ::-webkit-scrollbar {
         width: 8px;
@@ -73,43 +94,16 @@
         background: #64748b;
       }
 
-      .chat-message-base {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.75rem;
-        max-width: 90%;
-        margin-bottom: 0.5rem;
-      }
-      .chat-message-base pre {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        font-size: 0.875rem;
-        line-height: 1.5;
-        font-family: "Fira Code", "Courier New", monospace;
-      }
-      .chat-message-content {
-        padding: 0.625rem 0.875rem;
-        border-radius: 0.75rem;
-      }
-      .icon-container {
-        flex-shrink: 0;
-        width: 2.25rem;
-        height: 2.25rem;
-        border-radius: 9999px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-top: 4px;
-      }
-      input[type="text"],
-      textarea {
+      input[type="text"] {
         font-size: 16px;
       }
     </style>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;500;600&display=swap" />
   </head>
   <body class="bg-slate-900 text-gray-200 font-sans flex flex-col justify-center items-center min-h-screen selection:bg-teal-500 selection:text-white overflow-hidden" style="font-family: 'Inter', sans-serif">
-    <main class="w-full h-screen sm:max-w-4xl sm:h-[95vh] sm:max-h-[800px] bg-slate-800/80 sm:backdrop-blur-xl sm:shadow-2xl sm:shadow-black/30 sm:rounded-2xl p-0 flex flex-col overflow-hidden border border-slate-700/50">
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
+
+    <main class="w-full h-screen sm:max-w-5xl sm:h-[95vh] sm:max-h-[800px] bg-slate-800/80 sm:backdrop-blur-xl sm:shadow-2xl sm:shadow-black/30 sm:rounded-2xl p-0 flex flex-col overflow-hidden border border-slate-700/50">
       <header class="p-4 border-b border-slate-700/50 flex justify-between items-center shrink-0 bg-slate-900/50">
         <div class="flex items-center gap-3">
           <ion-icon name="terminal-outline" class="text-2xl text-teal-400"></ion-icon>
@@ -125,15 +119,13 @@
         <div id="commandGuideContentWrapper" class="bg-slate-800 p-6 rounded-lg shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto border border-slate-700 modal-content">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-2xl font-semibold text-teal-400">Panduan Perintah</h2>
-            <button id="closeGuideButton" class="text-slate-400 hover:text-white text-3xl p-1">
-              <ion-icon name="close-circle-outline"></ion-icon>
-            </button>
+            <button id="closeGuideButton" class="text-slate-400 hover:text-white text-3xl p-1"><ion-icon name="close-circle-outline"></ion-icon></button>
           </div>
           <div id="commandGuideContent" class="space-y-4 text-sm"></div>
         </div>
       </div>
 
-      <section id="chatFeed" aria-live="polite" class="flex-grow p-4 md:p-6 space-y-3 overflow-y-auto bg-slate-900/70 flex flex-col"></section>
+      <section id="chatFeed" aria-live="polite" class="flex-grow p-4 md:p-6 space-y-4 overflow-y-auto bg-slate-900/70 flex flex-col"></section>
 
       <section aria-labelledby="command-input-heading" class="p-3 md:p-4 border-t border-slate-700/50 bg-slate-800/90 shrink-0">
         <h2 id="command-input-heading" class="sr-only">Command Input</h2>
@@ -171,85 +163,176 @@
       const closeGuideButton = document.getElementById('closeGuideButton');
       const commandGuideContentWrapper = document.getElementById('commandGuideContentWrapper');
       const commandGuideContent = document.getElementById('commandGuideContent');
-
       const rawCommandGuide = {{ command_guide | tojson | safe }};
 
-      function populateCommandGuide() {
-        commandGuideContent.innerHTML = '';
-        if (rawCommandGuide && rawCommandGuide.length > 0) {
-          rawCommandGuide.forEach((cmd) => {
-            const entryDiv = document.createElement('div');
-            entryDiv.className = 'p-3 bg-slate-700/60 rounded-lg';
-            const descP = document.createElement('p');
-            descP.className = 'text-slate-200';
-            descP.textContent = cmd.description;
-            entryDiv.appendChild(descP);
-            const exampleP = document.createElement('p');
-            exampleP.className = 'text-slate-400 mt-2 text-xs';
-            exampleP.innerHTML = `Contoh: <code class="font-mono bg-slate-900/80 px-1.5 py-0.5 rounded">${cmd.example}</code>`;
-            entryDiv.appendChild(exampleP);
-            commandGuideContent.appendChild(entryDiv);
-          });
-        } else {
-          commandGuideContent.innerHTML = '<p class="text-slate-400">Panduan perintah tidak tersedia.</p>';
-        }
+      // --- UTILITIES ---
+      function showToast(message) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast bg-teal-500 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-lg';
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.add('closing');
+          toast.addEventListener('animationend', () => toast.remove());
+        }, 2000);
       }
 
-      function createMessageElement(text, type) {
-        const article = document.createElement('article');
-        article.className = 'chat-message-base animate-fadeInUp';
+      function copyToClipboard(text, element) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(`'${text}' disalin ke clipboard!`);
+        }).catch(err => {
+          console.error('Gagal menyalin:', err);
+          showToast('Gagal menyalin teks.');
+        });
+      }
 
-        const iconDiv = document.createElement('div'); iconDiv.className = 'icon-container';
-        const icon = document.createElement('ion-icon'); icon.className = 'text-xl';
-        const contentWrapper = document.createElement('div'); contentWrapper.className = 'chat-message-content';
-        const pre = document.createElement('pre'); pre.textContent = text;
+      // --- UI ELEMENT CREATION ---
+      function createBaseMessageElement() {
+          const article = document.createElement('article');
+          article.className = 'chat-message flex items-start gap-3 max-w-full animate-fadeInUp';
+          return article;
+      }
 
-        switch (type) {
-            case 'user':
-                article.classList.add('self-end', 'flex-row-reverse');
-                icon.setAttribute('name', 'person-circle-outline');
-                iconDiv.classList.add('bg-blue-500/80', 'text-white');
-                contentWrapper.classList.add('bg-blue-500/90', 'text-white', 'rounded-br-none');
-                break;
-            case 'bot-output':
-                article.classList.add('self-start');
-                icon.setAttribute('name', 'logo-docker');
-                iconDiv.classList.add('bg-green-500/80', 'text-white');
-                contentWrapper.classList.add('bg-slate-700', 'text-green-300', 'rounded-bl-none');
-                break;
-            case 'bot-error':
-                article.classList.add('self-start');
-                icon.setAttribute('name', 'warning-outline');
-                iconDiv.classList.add('bg-red-500/80', 'text-white');
-                contentWrapper.classList.add('bg-slate-700', 'text-red-300', 'rounded-bl-none');
-                break;
-            case 'system-info':
-            default:
-                article.classList.add('self-start');
-                icon.setAttribute('name', 'information-circle-outline');
-                iconDiv.classList.add('bg-slate-600', 'text-slate-200');
-                contentWrapper.classList.add('bg-slate-700', 'text-slate-300', 'rounded-bl-none', 'italic');
-                break;
-        }
-        iconDiv.appendChild(icon); contentWrapper.appendChild(pre);
-        if (type === 'user') {
-            article.appendChild(contentWrapper); article.appendChild(iconDiv);
-        } else {
-            article.appendChild(iconDiv); article.appendChild(contentWrapper);
-        }
-        return article;
+      function createIcon(iconName, colorClasses) {
+          const iconContainer = document.createElement('div');
+          iconContainer.className = `flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-1 ${colorClasses}`;
+          const icon = document.createElement('ion-icon');
+          icon.className = 'text-xl';
+          icon.setAttribute('name', iconName);
+          iconContainer.appendChild(icon);
+          return iconContainer;
+      }
+
+      function createUserMessageElement(text) {
+          const article = createBaseMessageElement();
+          article.classList.add('self-end', 'flex-row-reverse');
+          const content = document.createElement('div');
+          content.className = 'bg-blue-500/90 text-white p-3 rounded-lg rounded-br-none';
+          content.textContent = text;
+          article.append(content, createIcon('person-circle-outline', 'bg-blue-500/80 text-white'));
+          return article;
+      }
+
+      function createBotMessageElement(text, type) {
+          const article = createBaseMessageElement();
+          article.classList.add('self-start');
+          let content, icon;
+
+          switch (type) {
+              case 'bot-error':
+                  content = document.createElement('div');
+                  content.className = 'bg-slate-700 text-red-300 p-3 rounded-lg rounded-bl-none font-mono text-sm';
+                  content.textContent = text;
+                  icon = createIcon('warning-outline', 'bg-red-500/80 text-white');
+                  break;
+              case 'system-info':
+                  content = document.createElement('div');
+                  content.className = 'bg-slate-700 text-slate-300 p-3 rounded-lg rounded-bl-none italic text-sm';
+                  content.textContent = text;
+                  icon = createIcon('information-circle-outline', 'bg-slate-600 text-slate-200');
+                  break;
+              case 'bot-output':
+              default:
+                  content = document.createElement('div');
+                  content.className = 'bg-slate-700 text-green-300 p-3 rounded-lg rounded-bl-none';
+                  const pre = document.createElement('pre');
+                  pre.className = 'whitespace-pre-wrap word-wrap break-word font-mono text-sm';
+                  pre.textContent = text;
+                  content.appendChild(pre);
+                  icon = createIcon('logo-docker', 'bg-green-500/80 text-white');
+                  break;
+          }
+          article.append(icon, content);
+          return article;
+      }
+
+      function createTableElement(containers) {
+          const article = createBaseMessageElement();
+          article.classList.add('self-start', 'w-full');
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'bg-slate-700 rounded-lg rounded-bl-none overflow-hidden w-full';
+
+          const tableContainer = document.createElement('div');
+          tableContainer.className = 'overflow-x-auto';
+
+          const table = document.createElement('table');
+          table.className = 'w-full text-left text-sm';
+
+          table.innerHTML = `
+              <thead class="bg-slate-800/50 text-slate-300 uppercase tracking-wider text-xs">
+                  <tr>
+                      <th class="p-3">Status</th>
+                      <th class="p-3">Name</th>
+                      <th class="p-3 hidden md:table-cell">Image</th>
+                      <th class="p-3 hidden lg:table-cell">Ports</th>
+                      <th class="p-3 text-right">Actions</th>
+                  </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-600/50"></tbody>
+          `;
+          const tbody = table.querySelector('tbody');
+
+          if (!containers || containers.length === 0) {
+              tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Tidak ada kontainer untuk ditampilkan.</td></tr>`;
+          } else {
+              containers.forEach(c => {
+                  const tr = document.createElement('tr');
+                  tr.className = 'hover:bg-slate-600/30 transition-colors';
+                  const statusColor = c.status.startsWith('run') ? 'bg-green-500' : 'bg-slate-500';
+
+                  tr.innerHTML = `
+                      <td class="p-3 align-middle"><span class="w-3 h-3 ${statusColor} rounded-full inline-block" title="${c.status}"></span></td>
+                      <td class="p-3 align-middle font-medium text-slate-100">
+                          <div class="flex items-center gap-2">
+                              <span>${c.name}${c.is_self ? ' (Ini)' : ''}</span>
+                              <ion-icon name="copy-outline" class="cursor-pointer text-slate-400 hover:text-white" onclick="copyToClipboard('${c.name}', this)"></ion-icon>
+                          </div>
+                          <div class="text-xs text-slate-400 font-mono">${c.id}</div>
+                      </td>
+                      <td class="p-3 align-middle text-slate-300 hidden md:table-cell">${c.image}</td>
+                      <td class="p-3 align-middle text-slate-400 font-mono hidden lg:table-cell">${c.ports || '-'}</td>
+                      <td class="p-3 align-middle">
+                          <div class="flex items-center justify-end gap-2">
+                              <button onclick="handleQuickAction('lihat log', '${c.name}')" title="View Logs" class="p-1.5 rounded-md bg-slate-600/50 hover:bg-slate-600 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" ${c.status.startsWith('exited') ? 'disabled' : ''}><ion-icon name="document-text-outline" class="text-lg"></ion-icon></button>
+                              <button onclick="handleQuickAction('lihat stats', '${c.name}')" title="View Stats" class="p-1.5 rounded-md bg-slate-600/50 hover:bg-slate-600 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" ${c.status.startsWith('exited') ? 'disabled' : ''}><ion-icon name="bar-chart-outline" class="text-lg"></ion-icon></button>
+                              <button onclick="handleQuickAction('stop', '${c.name}')" title="Stop Container" class="p-1.5 rounded-md bg-slate-600/50 hover:bg-yellow-500 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed" ${c.status.startsWith('exited') || c.is_self ? 'disabled' : ''}><ion-icon name="stop-circle-outline" class="text-lg"></ion-icon></button>
+                          </div>
+                      </td>
+                  `;
+                  tbody.appendChild(tr);
+              });
+          }
+
+          tableContainer.appendChild(table);
+          wrapper.appendChild(tableContainer);
+          article.append(createIcon('logo-docker', 'bg-green-500/80 text-white'), wrapper);
+          return article;
       }
 
       function createTypingIndicator() {
-          const article = createMessageElement('', 'bot-output');
+          const article = createBaseMessageElement();
           article.id = 'typingIndicator';
-          const pre = article.querySelector('pre');
-          pre.innerHTML = `<div class="flex items-center gap-1.5">
-                            <div class="typing-dot w-2 h-2 bg-green-300 rounded-full"></div>
-                            <div class="typing-dot w-2 h-2 bg-green-300 rounded-full"></div>
-                            <div class="typing-dot w-2 h-2 bg-green-300 rounded-full"></div>
-                          </div>`;
+          const pre = document.createElement('div');
+          pre.className = 'flex items-center gap-1.5 p-3'
+          pre.innerHTML = `
+              <div class="typing-dot w-2 h-2 bg-green-300 rounded-full"></div>
+              <div class="typing-dot w-2 h-2 bg-green-300 rounded-full"></div>
+              <div class="typing-dot w-2 h-2 bg-green-300 rounded-full"></div>
+          `;
+          article.append(createIcon('logo-docker', 'bg-green-500/80 text-white'), pre);
           return article;
+      }
+
+      function createBotResponse(data) {
+          if (data.output_type === 'table') {
+              return createTableElement(data.output);
+          }
+          if (data.output) {
+              return createBotMessageElement(data.output, 'bot-output');
+          }
+          return null;
       }
 
       function appendToFeed(element) {
@@ -259,53 +342,59 @@
       }
 
       function setLoadingState(isLoading) {
-        if (isLoading) {
-          sendIcon.classList.add('hidden'); loadingIndicator.classList.remove('hidden');
-          sendButton.disabled = true; commandInput.disabled = true;
-          sendButton.classList.add('cursor-not-allowed', 'opacity-70');
-        } else {
-          sendIcon.classList.remove('hidden'); loadingIndicator.classList.add('hidden');
-          sendButton.disabled = false; commandInput.disabled = false;
-          sendButton.classList.remove('cursor-not-allowed', 'opacity-70');
-          commandInput.focus();
-        }
+        sendIcon.classList.toggle('hidden', isLoading);
+        loadingIndicator.classList.toggle('hidden', !isLoading);
+        sendButton.disabled = isLoading;
+        commandInput.disabled = isLoading;
+        sendButton.classList.toggle('cursor-not-allowed', isLoading);
+        sendButton.classList.toggle('opacity-70', isLoading);
+        if (!isLoading) commandInput.focus();
       }
 
-      async function handleCommandSubmit(event) {
-        if (event) event.preventDefault();
-        const commandText = commandInput.value.trim();
-        if (!commandText) return;
+      async function submitCommand(commandText) {
+          if (!commandText) return;
 
-        appendToFeed(createMessageElement(commandText, 'user'));
-        commandInput.value = '';
-        const typingIndicator = createTypingIndicator();
-        appendToFeed(typingIndicator);
+          appendToFeed(createUserMessageElement(commandText));
+          commandInput.value = '';
+          const typingIndicator = createTypingIndicator();
+          appendToFeed(typingIndicator);
+          setLoadingState(true);
 
-        setLoadingState(true);
+          try {
+              const response = await fetch('/api/command', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                  body: JSON.stringify({ command: commandText }),
+              });
 
-        try {
-          const response = await fetch('/api/command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ command: commandText }),
-          });
+              typingIndicator.remove();
+              const data = await response.json();
 
-          typingIndicator.remove();
-          const data = await response.json();
-
-          if (!response.ok) {
-            appendToFeed(createMessageElement(data.error || `Server Error: ${response.status}`, 'bot-error'));
-          } else {
-            if (data.output) appendToFeed(createMessageElement(data.output, 'bot-output'));
-            if (data.error) appendToFeed(createMessageElement(data.error, 'bot-error'));
+              if (!response.ok) {
+                  appendToFeed(createBotMessageElement(data.error || `Server Error: ${response.status}`, 'bot-error'));
+              } else {
+                  appendToFeed(createBotResponse(data));
+                  if (data.error) appendToFeed(createBotMessageElement(data.error, 'bot-error'));
+              }
+          } catch (error) {
+              typingIndicator.remove();
+              console.error('Fetch error:', error);
+              appendToFeed(createBotMessageElement(`Kesalahan Jaringan: ${error.message}.`, 'bot-error'));
+          } finally {
+              setLoadingState(false);
           }
-        } catch (error) {
-          typingIndicator.remove();
-          console.error('Fetch error:', error);
-          appendToFeed(createMessageElement(`Kesalahan Jaringan: ${error.message}.`, 'bot-error'));
-        } finally {
-          setLoadingState(false);
-        }
+      }
+
+      async function handleFormSubmit(event) {
+          if (event) event.preventDefault();
+          const commandText = commandInput.value.trim();
+          submitCommand(commandText);
+      }
+
+      function handleQuickAction(action, name) {
+          const command = `${action} ${name}`;
+          showToast(`Menjalankan: ${command}`);
+          submitCommand(command);
       }
 
       function toggleModal(show) {
@@ -318,13 +407,21 @@
           } else {
               commandGuideModal.classList.remove('opacity-100');
               commandGuideContentWrapper.classList.remove('active');
-              setTimeout(() => {
-                commandGuideModal.classList.add('hidden');
-              }, 300); // Wait for animation to finish
+              setTimeout(() => { commandGuideModal.classList.add('hidden'); }, 300);
           }
       }
 
-      commandForm.addEventListener('submit', handleCommandSubmit);
+      function populateCommandGuide() {
+        commandGuideContent.innerHTML = rawCommandGuide?.map(cmd => `
+          <div class="p-3 bg-slate-700/60 rounded-lg">
+            <p class="text-slate-200">${cmd.description}</p>
+            <p class="text-slate-400 mt-2 text-xs">Contoh: <code class="font-mono bg-slate-900/80 px-1.5 py-0.5 rounded">${cmd.example}</code></p>
+          </div>
+        `).join('') || '<p class="text-slate-400">Panduan perintah tidak tersedia.</p>';
+      }
+
+
+      commandForm.addEventListener('submit', handleFormSubmit);
       toggleGuideButton.addEventListener('click', () => toggleModal(true));
       closeGuideButton.addEventListener('click', () => toggleModal(false));
       commandGuideModal.addEventListener('click', (event) => {
@@ -332,10 +429,9 @@
       });
 
       document.addEventListener('DOMContentLoaded', () => {
-        appendToFeed(
-          createMessageElement("Selamat datang di ChatOps! Ketik perintah untuk mengelola Docker container Anda atau klik 'Panduan' untuk melihat daftar perintah.", 'system-info')
-        );
-        populateCommandGuide(); commandInput.focus();
+        appendToFeed(createBotMessageElement("Selamat datang di ChatOps! Ketik perintah untuk mengelola Docker container Anda atau klik 'Panduan' untuk melihat daftar perintah.", 'system-info'));
+        populateCommandGuide();
+        commandInput.focus();
       });
     </script>
   </body>

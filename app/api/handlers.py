@@ -16,7 +16,7 @@ ACTION_HANDLERS = {
     "compose_down": docker_service.compose_down,
 }
 
-def parse_and_execute_command(user_command_str: str) -> tuple[str, str]:
+def parse_and_execute_command(user_command_str: str) -> dict:
     normalized_command = user_command_str.lower().strip()
     for cmd_def in COMMAND_GUIDE:
         match = re.fullmatch(cmd_def["pattern"], normalized_command)
@@ -26,12 +26,20 @@ def parse_and_execute_command(user_command_str: str) -> tuple[str, str]:
                 params = match.groupdict()
                 if "params_map" in cmd_def: 
                     params.update(cmd_def["params_map"])
+               
+                output_data, error_str = ACTION_HANDLERS[action](params)
                 
-                output, error = ACTION_HANDLERS[action](params)
+                output_type = "table" if action == "list_containers" else "text"
                 
-                if not error and not output: 
-                    output = f"Perintah '{cmd_def.get('id', action)}' berhasil dieksekusi."
-                return output, error
+                if not error_str and not output_data and output_type == "text": 
+                    output_data = f"Perintah '{cmd_def.get('id', action)}' berhasil dieksekusi."
+                
+                return {
+                    "output": output_data,
+                    "error": error_str,
+                    "output_type": output_type
+                }
             else:
-                return "", f"Error: Aksi '{action}' belum terdefinisi di backend."
-    return "", f"Error: Perintah '{user_command_str}' tidak dikenali atau formatnya salah."
+                return {"output": None, "error": f"Error: Aksi '{action}' belum terdefinisi di backend.", "output_type": "text"}
+                
+    return {"output": None, "error": f"Error: Perintah '{user_command_str}' tidak dikenali atau formatnya salah.", "output_type": "text"}

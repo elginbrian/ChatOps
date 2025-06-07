@@ -47,6 +47,55 @@ def is_self_target(target_name: str) -> bool:
         return False 
     return False
 
+def list_containers(params: dict) -> tuple[list, str]:
+    """
+    Mengembalikan daftar kontainer sebagai list of dictionaries, bukan string.
+    """
+    client = get_docker_client()
+    if not client:
+        return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    try:
+        all_containers = params.get("all", False)
+        containers = client.containers.list(all=all_containers)
+        
+        container_list = []
+        CHATOP_CONTAINER_NAME = current_app.config.get('CHATOP_CONTAINER_NAME')
+
+        for container in containers:
+            is_self = CHATOP_CONTAINER_NAME and (container.name == CHATOP_CONTAINER_NAME or container.short_id == CHATOP_CONTAINER_NAME or container.id == CHATOP_CONTAINER_NAME)
+            
+            image_tags = container.image.tags
+            image_display = image_tags[0] if image_tags else container.attrs['Config']['Image']
+            
+            ports_str_list = []
+            if container.ports:
+                for _internal_port, host_ports_list in container.ports.items():
+                    if host_ports_list:
+                        for host_port_info in host_ports_list:
+                            host_ip = host_port_info.get('HostIp', '0.0.0.0')
+                            host_port = host_port_info.get('HostPort', '')
+                            if host_ip == '::': host_ip = '[::]'
+                            ports_str_list.append(f"{host_ip}:{host_port}->{_internal_port}")
+
+            container_list.append({
+                "id": container.short_id,
+                "name": container.name,
+                "image": image_display,
+                "status": container.status,
+                "ports": ', '.join(ports_str_list),
+                "is_self": is_self
+            })
+            
+        return container_list, ""
+    except docker.errors.APIError as e:
+        current_app.logger.error(f"Docker API Error saat list containers: {e}")
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e:
+        current_app.logger.exception("Error tak terduga saat list containers:")
+        return None, f"Error tak terduga: {str(e)}"
+
+# Fungsi lain (run_container, stop_container, etc.) tetap sama
+# ... (sisa kode dari docker_service.py tidak diubah)
 def format_container_list(containers):
     if not containers:
         return "Tidak ada kontainer."
@@ -96,21 +145,6 @@ def format_container_list(containers):
         output += "\n"
 
     return output.strip()
-
-def list_containers(params: dict) -> tuple[str, str]:
-    client = get_docker_client()
-    if not client:
-        return "", "Error: Tidak dapat terhubung ke Docker daemon."
-    try:
-        all_containers = params.get("all", False)
-        containers = client.containers.list(all=all_containers)
-        return format_container_list(containers), ""
-    except docker.errors.APIError as e:
-        current_app.logger.error(f"Docker API Error saat list containers: {e}")
-        return "", f"Error Docker API: {e.explanation or str(e)}"
-    except Exception as e:
-        current_app.logger.exception("Error tak terduga saat list containers:")
-        return "", f"Error tak terduga: {str(e)}"
 
 def run_container(params: dict) -> tuple[str, str]:
     client = get_docker_client()

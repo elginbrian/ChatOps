@@ -14,11 +14,12 @@ def handle_command_route():
         user_command_str = data.get('command', '').strip()
         current_app.logger.info(f"Menerima perintah dari {request.remote_addr}: '{user_command_str}'")
 
-        output_str, error_str = parse_and_execute_command(user_command_str)
+        result = parse_and_execute_command(user_command_str)
 
         response_data = {
-            'output': output_str,
-            'error': error_str,
+            'output': result.get('output'),
+            'error': result.get('error'),
+            'output_type': result.get('output_type', 'text'),
             'received_command': user_command_str
         }
         return jsonify(response_data)
