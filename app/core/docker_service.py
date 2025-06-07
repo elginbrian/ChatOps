@@ -51,20 +51,25 @@ def format_container_list(containers):
     if not containers:
         return "Tidak ada kontainer."
     CHATOP_CONTAINER_NAME = current_app.config.get('CHATOP_CONTAINER_NAME')
-    output = "CONTAINER ID\tIMAGE\t\tCOMMAND\t\tCREATED\t\tSTATUS\t\tPORTS\t\tNAMES\n"
-    output += "----------------------------------------------------------------------------------------------------------------------\n"
+    
+    header = [
+        ("CONTAINER ID", 14), ("IMAGE", 25), ("STATUS", 20), ("PORTS", 25), ("NAMES", 30)
+    ]
+   
+    output = ""
+    for name, width in header:
+        output += f"{name:<{width}}"
+    output += "\n"
+    output += "-" * (sum(w for _, w in header)) + "\n"
+
     for container in containers:
         if CHATOP_CONTAINER_NAME and (container.name == CHATOP_CONTAINER_NAME or container.short_id == CHATOP_CONTAINER_NAME or container.id == CHATOP_CONTAINER_NAME):
-            name_display = f"{container.name} (Ini adalah Aplikasi ChatOps)"
+            name_display = f"{container.name} (Aplikasi Ini)"
         else:
             name_display = container.name
         
         image_tags = container.image.tags
-        image_display = image_tags[0] if image_tags else container.attrs['Config']['Image'][:20]
-        
-        command = container.attrs['Config']['Cmd']
-        command_str = ' '.join(command) if command else ''
-        created = container.attrs['Created'][:19].replace('T', ' ')
+        image_display = image_tags[0] if image_tags else container.attrs['Config']['Image']
         status = container.status
         ports = container.ports
         ports_str_list = []
@@ -77,8 +82,20 @@ def format_container_list(containers):
                         if host_ip == '::': host_ip = '[::]'
                         ports_str_list.append(f"{host_ip}:{host_port}->{_internal_port}")
         
-        output += f"{container.short_id}\t{image_display[:20]}\t{command_str[:20]}\t{created}\t{status[:20]}\t{', '.join(ports_str_list)[:20]}\t{name_display}\n"
-    return output
+        row_data = {
+            "CONTAINER ID": container.short_id,
+            "IMAGE": image_display,
+            "STATUS": status,
+            "PORTS": ', '.join(ports_str_list),
+            "NAMES": name_display
+        }
+
+        for name, width in header:
+            val = row_data.get(name, "")
+            output += f"{val[:width-1]:<{width}}"
+        output += "\n"
+
+    return output.strip()
 
 def list_containers(params: dict) -> tuple[str, str]:
     client = get_docker_client()
@@ -276,8 +293,15 @@ def pull_image(params: dict) -> tuple[str, str]:
 def format_image_list(images):
     if not images:
         return "Tidak ada image."
-    output = "REPOSITORY\tTAG\t\tIMAGE ID\tCREATED\t\tSIZE (MB)\n"
-    output += "--------------------------------------------------------------------------------------------------\n"
+    header = [
+        ("REPOSITORY", 30), ("TAG", 20), ("IMAGE ID", 15), ("CREATED", 25), ("SIZE (MB)", 10)
+    ]
+    output = ""
+    for name, width in header:
+        output += f"{name:<{width}}"
+    output += "\n"
+    output += "-" * (sum(w for _, w in header)) + "\n"
+
     for img in images:
         repo_tags = img.tags
         if not repo_tags:
@@ -290,8 +314,20 @@ def format_image_list(images):
         
         created_at = img.attrs['Created'][:19].replace('T', ' ')
         size_mb = round(img.attrs['Size'] / (1024 * 1024), 2)
-        output += f"{repo[:25]:<25}\t{tag[:15]:<15}\t{img.short_id[7:]}\t{created_at}\t{size_mb}\n"
-    return output
+        
+        row_data = {
+            "REPOSITORY": repo,
+            "TAG": tag,
+            "IMAGE ID": img.short_id[7:],
+            "CREATED": created_at,
+            "SIZE (MB)": str(size_mb)
+        }
+        for name, width in header:
+            val = row_data.get(name, "")
+            output += f"{val[:width-1]:<{width}}"
+        output += "\n"
+        
+    return output.strip()
 
 def list_images(params: dict) -> tuple[str, str]:
     client = get_docker_client()
