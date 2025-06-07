@@ -1,6 +1,10 @@
+# docker-compose.yml
 services:
   chatops_app:
-    build: .
+    build:
+      context: .
+      args:
+        - CHATOPS_PASSWORD_ARG
     container_name: chatops_service
     ports:
       - "5000:5000"
@@ -11,3 +15,4 @@ services:
     restart: unless-stopped
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CHATOPS_PASSWORD=${CHATOPS_PASSWORD_ARG}

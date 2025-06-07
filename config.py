@@ -6,7 +6,9 @@ class Config:
     COMMAND_TIMEOUT = 15
     CHATOP_CONTAINER_NAME = 'chatops_service'
     DEBUG_MODE = True
-    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY') 
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+    SECRET_KEY = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key') 
+    CHATOPS_PASSWORD = os.getenv('CHATOPS_PASSWORD')
 
 config = {
     'default': Config

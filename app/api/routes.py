@@ -1,21 +1,62 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import (Blueprint, request, jsonify, current_app, 
+                   render_template, session, redirect, url_for, flash)
 from ..api.handlers import parse_and_execute_command
 from ..core import history_manager
+from ..models.commands import COMMAND_GUIDE
+from functools import wraps
 
 api_bp = Blueprint('api', __name__)
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'logged_in' not in session:
+            return redirect(url_for('api.login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@api_bp.route('/')
+@login_required
+def index():
+    return render_template('index.html', command_guide=COMMAND_GUIDE)
+
+@api_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'logged_in' in session:
+        return redirect(url_for('api.index'))
+
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password and password == current_app.config.get('CHATOPS_PASSWORD'):
+            session['logged_in'] = True
+            return redirect(url_for('api.index'))
+        else:
+            flash('Password yang Anda masukkan salah.', 'error')
+            return redirect(url_for('api.login'))
+            
+    return render_template('login.html')
+
+@api_bp.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    flash('Anda telah berhasil logout.', 'success')
+    return redirect(url_for('api.login'))
+
 @api_bp.route('/conversations', methods=['GET'])
+@login_required
 def get_conversations():
     conv_list = history_manager.get_conversations_list()
     return jsonify(conv_list)
 
 @api_bp.route('/conversation/<string:conv_id>', methods=['GET'])
+@login_required
 def get_conversation(conv_id):
     messages = history_manager.get_conversation_messages(conv_id)
     history_manager.set_last_active(conv_id)
     return jsonify(messages)
 
 @api_bp.route('/conversation/<string:conv_id>', methods=['DELETE'])
+@login_required
 def delete_conversation_route(conv_id):
     if history_manager.delete_conversation(conv_id):
         return jsonify({"status": "success", "message": "Percakapan dihapus."})
@@ -23,6 +64,7 @@ def delete_conversation_route(conv_id):
         return jsonify({"error": "Percakapan tidak ditemukan."}), 404
 
 @api_bp.route('/command', methods=['POST'])
+@login_required
 def handle_command_route():
     try:
         data = request.get_json()
