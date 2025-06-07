@@ -329,3 +329,134 @@ def inspect_container(params: dict) -> tuple[str, str]:
         return None, f"Error: Kontainer '{name}' tidak ditemukan."
     except Exception as e:
         return None, f"Error tak terduga: {str(e)}"
+    
+def restart_container(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client: return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name: return None, "Error: Nama kontainer dibutuhkan."
+
+    if is_self_target(name):
+        return None, f"Error: Tidak diizinkan me-restart kontainer ChatOps sendiri."
+
+    try:
+        container = client.containers.get(name)
+        container.restart(timeout=5)
+        output = {
+            "action": "Restart",
+            "status": "Berhasil Di-restart",
+            "resource_type": "Kontainer",
+            "resource_name": name
+        }
+        return output, ""
+    except docker.errors.NotFound:
+        return None, f"Error: Kontainer '{name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e: return None, f"Error tak terduga: {str(e)}"
+
+def pause_container(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client: return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name: return None, "Error: Nama kontainer dibutuhkan."
+
+    if is_self_target(name):
+        return None, f"Error: Tidak diizinkan menghentikan sementara kontainer ChatOps sendiri."
+
+    try:
+        container = client.containers.get(name)
+        if container.status != "running":
+            return None, f"Error: Kontainer '{name}' tidak sedang berjalan."
+        if container.status == "paused":
+            return None, f"Error: Kontainer '{name}' sudah dalam keadaan 'paused'."
+
+        container.pause()
+        output = {
+            "action": "Pause",
+            "status": "Berhasil Dihentikan Sementara",
+            "resource_type": "Kontainer",
+            "resource_name": name
+        }
+        return output, ""
+    except docker.errors.NotFound:
+        return None, f"Error: Kontainer '{name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e: return None, f"Error tak terduga: {str(e)}"
+
+def unpause_container(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client: return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name: return None, "Error: Nama kontainer dibutuhkan."
+
+    try:
+        container = client.containers.get(name)
+        if container.status != "paused":
+            return None, f"Error: Kontainer '{name}' tidak dalam keadaan 'paused'."
+
+        container.unpause()
+        output = {
+            "action": "Unpause",
+            "status": "Berhasil Dilanjutkan",
+            "resource_type": "Kontainer",
+            "resource_name": name
+        }
+        return output, ""
+    except docker.errors.NotFound:
+        return None, f"Error: Kontainer '{name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e: return None, f"Error tak terduga: {str(e)}"
+
+def exec_in_container(params: dict) -> tuple[str, str]:
+    client = get_docker_client()
+    if not client: return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    command = params.get("command")
+    if not name or not command: return None, "Error: Nama kontainer dan perintah dibutuhkan."
+
+    try:
+        container = client.containers.get(name)
+        if container.status != "running":
+            return None, f"Error: Kontainer '{name}' tidak sedang berjalan."
+
+        exit_code, output = container.exec_run(cmd=command)
+        decoded_output = output.decode('utf-8').strip()
+
+        if exit_code == 0:
+            return f"Output dari '{command}' di '{name}':\n\n{decoded_output}", ""
+        else:
+            return f"Error saat menjalankan '{command}' di '{name}' (exit code: {exit_code}):\n\n{decoded_output}", ""
+
+    except docker.errors.NotFound:
+        return None, f"Error: Kontainer '{name}' tidak ditemukan."
+    except Exception as e:
+        return None, f"Error tak terduga: {str(e)}"
+
+def rename_container(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client: return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    old_name = params.get("old_name")
+    new_name = params.get("new_name")
+    if not old_name or not new_name: return None, "Error: Nama lama dan nama baru dibutuhkan."
+
+    try:
+        container = client.containers.get(old_name)
+        container.rename(new_name)
+        output = {
+            "action": "Rename",
+            "status": "Berhasil Diubah Nama",
+            "resource_type": "Kontainer",
+            "resource_name": old_name,
+            "details": [
+                {"key": "Nama Baru", "value": new_name}
+            ]
+        }
+        return output, ""
+    except docker.errors.NotFound:
+        return None, f"Error: Kontainer '{old_name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e: return None, f"Error tak terduga: {str(e)}"

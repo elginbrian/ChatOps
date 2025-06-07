@@ -25,6 +25,20 @@ ACTION_HANDLERS = {
     "compose_down": compose_manager.compose_down,
     "prune_system": system_manager.prune_system,
     "clear_history": history_manager.clear_history,
+    "restart_container": container_manager.restart_container,
+    "remove_image": image_manager.remove_image,
+    "system_info": system_manager.system_info,
+    "system_version": system_manager.system_version,
+    "pause_container": container_manager.pause_container,
+    "unpause_container": container_manager.unpause_container,
+    "create_volume": volume_manager.create_volume,
+    "compose_ps": compose_manager.compose_ps,
+    "compose_logs": compose_manager.compose_logs,
+    "exec_in_container": container_manager.exec_in_container,
+    "rename_container": container_manager.rename_container,
+    "remove_network": network_manager.remove_network,
+    "compose_restart": compose_manager.compose_restart,
+    "compose_build": compose_manager.compose_build,
 }
 
 INSPECT_ACTION_MAP = {
@@ -59,10 +73,16 @@ def parse_and_execute_command(user_command_str: str, history: list = None) -> di
                 output_type = "text"
                 if action in ["list_containers", "list_images", "view_stats", "view_logs", "list_volumes", "list_networks"]:
                     output_type = "table"
-                elif action in ["run_container", "stop_container", "remove_container", "pull_image", "compose_up", "compose_down", "start_container", "remove_volume", "prune_system"]:
+                elif action in [
+                    "run_container", "stop_container", "remove_container", "pull_image", 
+                    "compose_up", "compose_down", "start_container", "remove_volume", 
+                    "prune_system", "remove_image", "restart_container", "pause_container", 
+                    "unpause_container", "create_volume", "rename_container", "remove_network"
+                ]:
                     output_type = "action_receipt"
-                elif "inspect" in action:
+                elif "inspect" in action or action in ["system_info", "system_version"]:
                     output_type = "inspect"
+                
                 return {"output": output_data, "error": error_str, "output_type": output_type}
             else:
                 return {"output": None, "error": f"Error: Aksi '{action}' belum terdefinisi di backend.", "output_type": "text"}

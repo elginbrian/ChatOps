@@ -39,3 +39,27 @@ def inspect_network(params: dict) -> tuple[str, str]:
         return None, f"Error: Network '{name}' tidak ditemukan."
     except Exception as e:
         return None, f"Error tak terduga: {str(e)}"
+    
+def remove_network(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client:
+        return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name:
+        return None, "Error: Nama network dibutuhkan."
+    try:
+        network = client.networks.get(name)
+        network.remove()
+        output = {
+            "action": "Remove",
+            "status": "Berhasil Dihapus",
+            "resource_type": "Network",
+            "resource_name": name
+        }
+        return output, ""
+    except docker.errors.NotFound:
+        return None, f"Error: Network '{name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e:
+        return None, f"Error tak terduga: {str(e)}"

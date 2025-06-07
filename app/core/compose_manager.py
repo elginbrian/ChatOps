@@ -31,3 +31,34 @@ def compose_up(params: dict) -> tuple[str, str]: #
 
 def compose_down(params: dict) -> tuple[str, str]: #
     return _run_compose_command(['down']) #
+
+def compose_ps(params: dict) -> tuple[str, str]:
+    return _run_compose_command(['ps'])
+
+def compose_logs(params: dict) -> tuple[str, str]:
+    service = params.get('service')
+    lines = params.get('lines', '50')
+    command = ['logs', '--tail', lines]
+    if service:
+        if not re.match(r"^[a-zA-Z0-9_.-]+$", service):
+            return "", "Error: Nama service tidak valid."
+        command.append(service)
+    return _run_compose_command(command)
+
+def compose_restart(params: dict) -> tuple[str, str]:
+    service = params.get('service')
+    command = ['restart']
+    if service:
+        if not re.match(r"^[a-zA-Z0-9_.-]+$", service):
+            return "", "Error: Nama service tidak valid."
+        command.append(service)
+    return _run_compose_command(command)
+
+def compose_build(params: dict) -> tuple[str, str]:
+    service = params.get('service')
+    command = ['build']
+    if service:
+        if not re.match(r"^[a-zA-Z0-9_.-]+$", service):
+            return "", "Error: Nama service tidak valid."
+        command.append(service)
+    return _run_compose_command(command)

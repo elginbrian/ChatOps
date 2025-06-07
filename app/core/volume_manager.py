@@ -64,3 +64,26 @@ def inspect_volume(params: dict) -> tuple[str, str]:
         return None, f"Error: Volume '{name}' tidak ditemukan."
     except Exception as e:
         return None, f"Error tak terduga: {str(e)}"
+    
+def create_volume(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client:
+        return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name:
+        return None, "Error: Nama volume dibutuhkan."
+    try:
+        volume = client.volumes.create(name=name)
+        output = {
+            "action": "Create",
+            "status": "Berhasil Dibuat",
+            "resource_type": "Volume",
+            "resource_name": volume.name
+        }
+        return output, ""
+    except docker.errors.APIError as e:
+        if "volume with name" in str(e.explanation) and "already exists" in str(e.explanation):
+            return None, f"Error: Volume dengan nama '{name}' sudah ada."
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e:
+        return None, f"Error tak terduga: {str(e)}"

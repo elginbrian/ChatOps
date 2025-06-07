@@ -71,3 +71,31 @@ def inspect_image(params: dict) -> tuple[str, str]:
         return None, f"Error: Image '{name}' tidak ditemukan."
     except Exception as e:
         return None, f"Error tak terduga: {str(e)}"
+    
+def remove_image(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client:
+        return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name:
+        return None, "Error: Nama atau ID image dibutuhkan."
+    try:
+        image = client.images.get(name)
+        client.images.remove(image.id)
+        output = {
+            "action": "Remove",
+            "status": "Berhasil Dihapus",
+            "resource_type": "Image",
+            "resource_name": name
+        }
+        return output, ""
+    except docker.errors.ImageNotFound:
+        return None, f"Error: Image '{name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        if "is being used by stopped container" in str(e.explanation):
+             return None, f"Error: Image '{name}' sedang digunakan oleh kontainer yang dihentikan."
+        if "is being used by running container" in str(e.explanation):
+             return None, f"Error: Image '{name}' sedang digunakan oleh kontainer yang berjalan."
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e:
+        return None, f"Error tak terduga: {str(e)}"
