@@ -6,6 +6,7 @@ from flask import current_app
 ACTION_HANDLERS = {
     "list_containers": docker_service.list_containers,
     "run_container": docker_service.run_container,
+    "start_container": docker_service.start_container,
     "stop_container": docker_service.stop_container,
     "remove_container": docker_service.remove_container,
     "view_logs": docker_service.view_logs,
@@ -32,7 +33,7 @@ def parse_and_execute_command(user_command_str: str) -> dict:
                 output_type = "text"
                 if action in ["list_containers", "list_images", "view_stats", "view_logs"]:
                     output_type = "table"
-                elif action in ["run_container", "stop_container", "remove_container", "pull_image", "compose_up", "compose_down"]:
+                elif action in ["run_container", "stop_container", "remove_container", "pull_image", "compose_up", "compose_down" , "start_container"]:
                     output_type = "action_receipt"
                 
                 return {

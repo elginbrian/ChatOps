@@ -16,6 +16,13 @@ COMMAND_GUIDE = [
         "example": "list container yang jalan"
     },
     {
+        "id": "start_container",
+        "pattern": r"^(hidupkan|nyalakan|start)\s+(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)$",
+        "action": "start_container",
+        "description": "Menghidupkan kembali kontainer yang sudah berhenti.",
+        "example": "hidupkan webku"
+    },
+    {
         "id": "run_container",
         "pattern": r"^(jalankan|nyalakan|start)\s+(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+dari\s+image\s+(?P<image>[a-zA-Z0-9/:_.-]+)(?:\s+dengan\s+port\s+(?P<ports>\d{1,5}:\d{1,5}(?:,\d{1,5}:\d{1,5})*))?$",
         "action": "run_container",

@@ -161,6 +161,41 @@ def run_container(params: dict) -> tuple[dict, str]:
     except Exception as e:
         current_app.logger.exception("Error tak terduga saat run container:")
         return None, f"Error tak terduga: {str(e)}"
+    
+def start_container(params: dict) -> tuple[dict, str]:
+    client = get_docker_client()
+    if not client:
+        return None, "Error: Tidak dapat terhubung ke Docker daemon."
+        
+    name = params.get("name")
+    if not name:
+        return None, "Error: Nama kontainer dibutuhkan."
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", name):
+        return None, "Error: Nama kontainer mengandung karakter tidak valid."
+
+    try:
+        container = client.containers.get(name)
+        if container.status == "running":
+            return None, f"Error: Kontainer '{name}' sudah dalam keadaan berjalan."
+            
+        container.start()
+        
+        output = {
+            "action": "Start",
+            "status": "Berhasil Dihidupkan",
+            "resource_type": "Kontainer",
+            "resource_name": container.name
+        }
+        return output, ""
+        
+    except docker.errors.NotFound:
+        return None, f"Error: Kontainer '{name}' tidak ditemukan."
+    except docker.errors.APIError as e:
+        current_app.logger.error(f"Docker API Error saat start container: {e}")
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e:
+        current_app.logger.exception("Error tak terduga saat start container:")
+        return None, f"Error tak terduga: {str(e)}"
 
 def stop_container(params: dict) -> tuple[dict, str]:
     client = get_docker_client()
