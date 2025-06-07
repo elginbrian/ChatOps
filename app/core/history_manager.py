@@ -8,7 +8,7 @@ def _get_history_file_path():
     return os.path.join(current_app.instance_path, 'chat_history.json')
 
 def _get_or_create_history_file():
-    history_file = _get_history_file_path() 
+    history_file = _get_history_file_path()
     try:
         os.makedirs(current_app.instance_path)
     except OSError:
@@ -32,7 +32,7 @@ def _save_history_data(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def get_conversations_list():
-    data = _get_or_create_history_file() 
+    data = _get_or_create_history_file()
     last_active_id = data.get('last_active_id')
     
     conv_list = [
@@ -46,7 +46,6 @@ def get_conversations_list():
     ]
     
     conv_list.sort(key=lambda x: x.get('created_at', 0), reverse=True)
-    
     return conv_list
 
 def get_conversation_messages(conv_id):
@@ -61,40 +60,28 @@ def set_last_active(conv_id):
 
 def create_new_conversation(user_command, bot_response):
     data = _get_or_create_history_file()
-    
     conv_id = str(uuid.uuid4())
     title = user_command[:50] + '...' if len(user_command) > 50 else user_command
-    
     new_conv = {
         "id": conv_id,
         "title": title,
         "created_at": time.time(),
-        "messages": [
-            {
-                "user_command": user_command,
-                "bot_response": bot_response
-            }
-        ]
+        "messages": [{"user_command": user_command, "bot_response": bot_response}]
     }
-    
     data["conversations"][conv_id] = new_conv
     _save_history_data(data)
-    
     return conv_id
 
 def add_message_to_conversation(conv_id, user_command, bot_response):
     data = _get_or_create_history_file()
-    
     if conv_id in data.get("conversations", {}):
-        data["conversations"][conv_id]["messages"].append({
-            "user_command": user_command,
-            "bot_response": bot_response
-        })
+        data["conversations"][conv_id]["messages"].append(
+            {"user_command": user_command, "bot_response": bot_response}
+        )
         _save_history_data(data)
 
 def delete_conversation(conv_id):
     data = _get_or_create_history_file()
-    
     if conv_id in data.get("conversations", {}):
         del data["conversations"][conv_id]
         if data.get('last_active_id') == conv_id:
@@ -102,3 +89,10 @@ def delete_conversation(conv_id):
         _save_history_data(data)
         return True
     return False
+
+def clear_history():
+    history_file = _get_history_file_path()
+    initial_data = {"conversations": {}, "last_active_id": None}
+    with open(history_file, 'w', encoding='utf-8') as f:
+        json.dump(initial_data, f, indent=2)
+    return {"status": "Berhasil", "message": "Semua riwayat percakapan telah dihapus."}, ""
