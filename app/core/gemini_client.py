@@ -151,13 +151,17 @@ def handle_gemini_request(user_prompt: str, history: list):
         
         final_text = response.candidates[0].content.parts[0].text
         
-        try:
-            json_data = json.loads(final_text)
-            if isinstance(json_data, dict) and json_data.get("type") == "table":
-                current_app.logger.info("Gemini generated a table.")
-                return {"output": json_data.get("data"), "error": None, "output_type": "gemini_table"}
-        except json.JSONDecodeError:
-            pass
+        json_match = re.search(r'\{.*\}', final_text, re.DOTALL)
+        
+        if json_match:
+            json_string = json_match.group(0)
+            try:
+                json_data = json.loads(json_string)
+                if isinstance(json_data, dict) and json_data.get("type") == "table":
+                    current_app.logger.info("Gemini generated a table, extracted from text.")
+                    return {"output": json_data.get("data"), "error": None, "output_type": "gemini_table"}
+            except json.JSONDecodeError:
+                pass
         
         return {"output": final_text, "error": None, "output_type": "gemini_text"}
 
