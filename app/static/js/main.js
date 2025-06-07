@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const template = document.getElementById("base-message-template").content.cloneNode(true);
     const article = template.querySelector(".chat-message");
     article.className += ` ${extraClasses}`;
-    return template;
+    return article;
   }
 
   function configureIcon(element, iconName, colorClasses) {
@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const element = createBaseMessageElement("self-end flex-row-reverse");
     configureIcon(element, "person-circle-outline", "bg-gray-700 text-white");
     const content = element.querySelector(".message-content");
-    content.className = "bg-white text-black p-3 rounded-t-xl rounded-l-xl";
+    content.className = "bg-white text-black p-3 rounded-t-xl rounded-l-xl w-auto";
     content.textContent = text;
     return element;
   }
@@ -111,33 +111,124 @@ document.addEventListener("DOMContentLoaded", () => {
     return element;
   }
 
-  function createContainerTable(containers) {
-    const headers = [{ text: "Status" }, { text: "Name" }, { text: "Image", className: "hidden md:table-cell" }, { text: "Ports", className: "hidden lg:table-cell" }, { text: "Actions", className: "text-right" }];
-    const rows = containers.map((c) => {
-      const rowTemplate = document.getElementById("container-table-row-template").content.cloneNode(true);
+  function createTableRenderer(config) {
+    return function (data) {
+      const rows = data.map((item) => {
+        const rowTemplate = document.getElementById(config.rowTemplateId).content.cloneNode(true);
+        config.mapDataToRow(rowTemplate, item);
+        return rowTemplate;
+      });
+      const table = createTableElement(config.headers, rows, config.noDataMessage);
+      const messageElement = createBaseMessageElement("self-start w-full");
+      configureIcon(messageElement, config.icon.name, config.icon.color);
+      messageElement.querySelector(".message-content").appendChild(table);
+      return messageElement;
+    };
+  }
+
+  const createContainerTable = createTableRenderer({
+    rowTemplateId: "container-table-row-template",
+    headers: [{ text: "Status" }, { text: "Name" }, { text: "Image", className: "hidden md:table-cell" }, { text: "Ports", className: "hidden lg:table-cell" }, { text: "Actions", className: "text-right" }],
+    noDataMessage: "Tidak ada kontainer.",
+    icon: { name: "logo-docker", color: "bg-blue-800 text-white" },
+    mapDataToRow: (row, c) => {
       const isRunning = c.status.toLowerCase().startsWith("up") || c.status.toLowerCase().startsWith("running");
       const canInteract = isRunning && !c.is_self;
-      rowTemplate.querySelector(".status-indicator").classList.add(isRunning ? "bg-green-500" : "bg-gray-500");
-      rowTemplate.querySelector(".status-indicator").title = c.status;
-      rowTemplate.querySelector(".container-name").textContent = `${c.name}${c.is_self ? " (Ini)" : ""}`;
-      rowTemplate.querySelector(".container-id").textContent = c.id;
-      rowTemplate.querySelector(".container-image").textContent = c.image;
-      rowTemplate.querySelector(".container-ports").textContent = c.ports || "-";
-      rowTemplate.querySelector(".copy-button").onclick = () => copyToClipboard(c.name, "Nama");
-      const inspectButton = rowTemplate.querySelector(".inspect-button");
-      inspectButton.onclick = () => handleQuickAction("inspect container", c.name);
-      const logsButton = rowTemplate.querySelector(".logs-button");
+      row.querySelector(".status-indicator").classList.add(isRunning ? "bg-green-500" : "bg-gray-500");
+      row.querySelector(".status-indicator").title = c.status;
+      row.querySelector(".container-name").textContent = `${c.name}${c.is_self ? " (Ini)" : ""}`;
+      row.querySelector(".container-id").textContent = c.id;
+      row.querySelector(".container-image").textContent = c.image;
+      row.querySelector(".container-ports").textContent = c.ports || "-";
+      row.querySelector(".copy-button").onclick = () => copyToClipboard(c.name, "Nama");
+      row.querySelector(".inspect-button").onclick = () => handleQuickAction("inspect container", c.name);
+      const logsButton = row.querySelector(".logs-button");
       logsButton.onclick = () => handleQuickAction("lihat log", c.name);
       if (!canInteract) logsButton.disabled = true;
-      const stopButton = rowTemplate.querySelector(".stop-button");
+      const stopButton = row.querySelector(".stop-button");
       stopButton.onclick = () => handleQuickAction("stop", c.name);
       if (!canInteract) stopButton.disabled = true;
-      return rowTemplate;
-    });
-    const table = createTableElement(headers, rows, "Tidak ada kontainer.");
+    },
+  });
+
+  const createImageTable = createTableRenderer({
+    rowTemplateId: "image-table-row-template",
+    headers: [{ text: "Repository" }, { text: "Tag" }, { text: "Image ID", className: "hidden sm:table-cell" }, { text: "Created", className: "hidden md:table-cell" }, { text: "Size (MB)", className: "text-right" }],
+    noDataMessage: "Tidak ada image.",
+    icon: { name: "logo-docker", color: "bg-blue-800 text-white" },
+    mapDataToRow: (row, i) => {
+      row.querySelector(".repository").textContent = i.repository;
+      row.querySelector(".tag").textContent = i.tag;
+      row.querySelector(".id").textContent = i.id;
+      row.querySelector(".created").textContent = i.created;
+      row.querySelector(".size").textContent = i.size;
+    },
+  });
+
+  const createVolumeTable = createTableRenderer({
+    rowTemplateId: "volume-table-row-template",
+    headers: [{ text: "Volume Name" }, { text: "Driver", className: "hidden sm:table-cell" }, { text: "Created", className: "hidden md:table-cell" }, { text: "Actions", className: "text-right" }],
+    noDataMessage: "Tidak ada volume.",
+    icon: { name: "server-outline", color: "bg-purple-800 text-white" },
+    mapDataToRow: (row, v) => {
+      row.querySelector(".name").textContent = v.name;
+      row.querySelector(".driver").textContent = v.driver;
+      row.querySelector(".created_at").textContent = v.created_at;
+      row.querySelector(".copy-button").onclick = () => copyToClipboard(v.name, "Nama Volume");
+      row.querySelector(".inspect-button").onclick = () => handleQuickAction("inspect volume", v.name);
+      row.querySelector(".remove-button").onclick = () => handleQuickAction("rm volume", v.name);
+    },
+  });
+
+  const createNetworkTable = createTableRenderer({
+    rowTemplateId: "network-table-row-template",
+    headers: [{ text: "Network Name" }, { text: "Driver", className: "hidden sm:table-cell" }, { text: "Scope", className: "hidden md:table-cell" }, { text: "Actions", className: "text-right" }],
+    noDataMessage: "Tidak ada network.",
+    icon: { name: "git-network-outline", color: "bg-teal-800 text-white" },
+    mapDataToRow: (row, n) => {
+      row.querySelector(".name").textContent = n.name;
+      row.querySelector(".id").textContent = n.id;
+      row.querySelector(".driver").textContent = n.driver;
+      row.querySelector(".scope").textContent = n.scope;
+      row.querySelector(".copy-button").onclick = () => copyToClipboard(n.name, "Nama Network");
+      row.querySelector(".inspect-button").onclick = () => handleQuickAction("inspect network", n.name);
+    },
+  });
+
+  const createStatsTable = createTableRenderer({
+    rowTemplateId: "stats-table-row-template",
+    headers: [{ text: "Kontainer" }, { text: "CPU Usage" }, { text: "Memory Usage" }],
+    noDataMessage: "Tidak ada statistik untuk ditampilkan.",
+    icon: { name: "bar-chart-outline", color: "bg-green-800 text-white" },
+    mapDataToRow: (row, s) => {
+      row.querySelector(".container_name").textContent = s.container_name;
+      row.querySelector(".cpu_usage").textContent = s.cpu_usage;
+      row.querySelector(".mem_usage").textContent = s.mem_usage;
+    },
+  });
+
+  const createLogsTable = createTableRenderer({
+    rowTemplateId: "logs-table-row-template",
+    headers: [
+      { text: "Timestamp", className: "w-1/4" },
+      { text: "Log Entry", className: "w-3/4" },
+    ],
+    noDataMessage: "Tidak ada log untuk ditampilkan.",
+    icon: { name: "document-text-outline", color: "bg-yellow-800 text-white" },
+    mapDataToRow: (row, l) => {
+      row.querySelector(".timestamp").textContent = l.timestamp;
+      row.querySelector(".log_entry").textContent = l.log_entry;
+    },
+  });
+
+  function createInspectOutputElement(jsonDataString, objectName) {
     const element = createBaseMessageElement("self-start w-full");
-    configureIcon(element, "logo-docker", "bg-blue-800 text-white");
-    element.querySelector(".message-content").appendChild(table);
+    configureIcon(element, "code-slash-outline", "bg-purple-800 text-white");
+    const template = document.getElementById("inspect-output-template").content.cloneNode(true);
+    template.querySelector(".object-name").textContent = objectName;
+    template.querySelector(".json-content").textContent = jsonDataString;
+    template.querySelector(".copy-json-button").onclick = () => copyToClipboard(jsonDataString, "JSON");
+    element.querySelector(".message-content").appendChild(template);
     return element;
   }
 
@@ -185,8 +276,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function createTypingIndicator() {
-    const element = createBaseMessageElement();
-    element.firstElementChild.id = "typingIndicator";
+    const element = createBaseMessageElement("self-start");
+    element.id = "typingIndicator";
     configureIcon(element, "logo-docker", "bg-blue-800 text-white");
     const content = element.querySelector(".message-content");
     content.className = "flex items-center gap-1.5 p-3";
@@ -198,20 +289,37 @@ document.addEventListener("DOMContentLoaded", () => {
     if (data.error) {
       return createBotTextMessage(data.error, "bot-error");
     }
+
+    const receivedCmd = data.received_command || "";
+
     switch (data.output_type) {
       case "table":
-        if (data.output && data.output.length > 0 && data.output[0].hasOwnProperty("status")) {
-          return createContainerTable(data.output);
+        if (!data.output || data.output.length === 0) {
+          if (receivedCmd.includes("image")) return createImageTable([]);
+          if (receivedCmd.includes("log")) return createLogsTable([]);
+          if (receivedCmd.includes("stats")) return createStatsTable([]);
+          if (receivedCmd.includes("volume")) return createVolumeTable([]);
+          if (receivedCmd.includes("network")) return createNetworkTable([]);
+          return createContainerTable([]);
         }
-        return createBotTextMessage("Tipe tabel ini belum diimplementasikan di UI.", "bot-error");
+        const firstItem = data.output[0];
+        if (firstItem.hasOwnProperty("status")) return createContainerTable(data.output);
+        if (firstItem.hasOwnProperty("repository")) return createImageTable(data.output);
+        if (firstItem.hasOwnProperty("cpu_usage")) return createStatsTable(data.output);
+        if (firstItem.hasOwnProperty("log_entry")) return createLogsTable(data.output);
+        if (firstItem.hasOwnProperty("driver") && firstItem.hasOwnProperty("created_at")) return createVolumeTable(data.output);
+        if (firstItem.hasOwnProperty("driver") && firstItem.hasOwnProperty("scope")) return createNetworkTable(data.output);
+        return createBotTextMessage("Tipe data tabel tidak dikenali.", "bot-error");
+
       case "action_receipt":
         return createActionReceiptElement(data.output);
       case "inspect":
-        return createBotTextMessage(data.output, "bot-output");
+        const objectName = receivedCmd.split(" ").slice(2).join(" ");
+        return createInspectOutputElement(data.output, objectName);
       case "text":
         return createBotTextMessage(data.output, "bot-output");
       default:
-        return createBotTextMessage("Tipe output tidak dikenali.", "bot-error");
+        return createBotTextMessage(`Tipe output tidak dikenali: ${data.output_type}`, "bot-error");
     }
   }
 
@@ -229,31 +337,36 @@ document.addEventListener("DOMContentLoaded", () => {
     commandInput.disabled = isLoading;
     if (!isLoading) commandInput.focus();
   }
+
   async function submitCommand(commandText) {
     if (!commandText) return;
     appendToFeed(createUserMessageElement(commandText));
     commandInput.value = "";
-    const typingIndicator = createTypingIndicator();
-    appendToFeed(typingIndicator);
+    appendToFeed(createTypingIndicator());
     setLoadingState(true);
+    const removeIndicator = () => {
+      const indicator = document.getElementById("typingIndicator");
+      if (indicator) indicator.remove();
+    };
     try {
       const response = await fetch("/api/command", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ command: commandText }) });
+      removeIndicator();
       const data = await response.json();
       data.received_command = commandText;
-      typingIndicator.remove();
       if (!response.ok && !data.error) {
         data.error = `Server Error: ${response.status}`;
       }
       const botResponse = createBotResponse(data);
       if (botResponse) appendToFeed(botResponse);
     } catch (error) {
-      typingIndicator.remove();
+      removeIndicator();
       console.error("Fetch error:", error);
       appendToFeed(createBotTextMessage(`Kesalahan Jaringan: ${error.message}.`, "bot-error"));
     } finally {
       setLoadingState(false);
     }
   }
+
   function handleQuickAction(action, name) {
     let command = `${action} ${name}`;
     showToast(`Menjalankan: ${command}`);
@@ -289,7 +402,6 @@ document.addEventListener("DOMContentLoaded", () => {
   commandGuideModal.addEventListener("click", (event) => {
     if (event.target === commandGuideModal) toggleModal(false);
   });
-
   appendToFeed(createBotTextMessage("Selamat datang di ChatOps! Ketik perintah untuk mengelola Docker container Anda atau klik 'Panduan' untuk melihat daftar perintah.", "system-info"));
   populateCommandGuide();
   commandInput.focus();
