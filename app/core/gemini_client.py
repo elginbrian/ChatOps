@@ -130,7 +130,7 @@ def handle_gemini_request(user_prompt: str, history: list):
                 tool_response = {"output": output_data, "error": error_str, "output_type": output_type}
                 
                 final_response = chat.send_message(
-                    genai.Part.from_function_response(
+                    genai.types.Part.from_function_response(
                         name=command_id,
                         response={"result": tool_response}
                     )
