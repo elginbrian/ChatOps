@@ -89,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
         contentClass = "gemini-content bg-[var(--bg-tertiary)] text-gray-300 p-3 rounded-t-xl rounded-r-xl text-sm leading-relaxed";
         content.innerHTML = marked.parse(text || "");
         break;
-      default: // "bot-output"
+      default:
         iconName = "logo-docker";
         iconColor = "bg-blue-800 text-white";
         contentClass = "bg-[var(--bg-tertiary)] text-gray-300 p-3 rounded-t-xl rounded-r-xl";
@@ -138,6 +138,29 @@ document.addEventListener("DOMContentLoaded", () => {
       messageElement.querySelector(".message-content").appendChild(table);
       return messageElement;
     };
+  }
+
+  function createGeminiTable(data) {
+    const headers = data.headers.map((h) => ({ text: h, className: "p-3" }));
+    const rows = data.rows.map((rowData) => {
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
+
+      rowData.forEach((cellData) => {
+        const td = document.createElement("td");
+        td.className = "p-3 align-middle text-gray-300";
+        td.textContent = cellData;
+        tr.appendChild(td);
+      });
+      return tr;
+    });
+
+    const table = createTableElement(headers, rows, "Tidak ada data untuk ditampilkan.");
+    const messageElement = createBaseMessageElement("self-start w-full");
+    // Gunakan ikon Gemini untuk tabel yang ia buat
+    configureIcon(messageElement, "sparkles-outline", "bg-indigo-800 text-white");
+    messageElement.querySelector(".message-content").appendChild(table);
+    return messageElement;
   }
 
   const createContainerTable = createTableRenderer({
@@ -334,6 +357,9 @@ document.addEventListener("DOMContentLoaded", () => {
         return createBotTextMessage(data.output, "bot-output");
       case "gemini_text":
         return createBotTextMessage(data.output, "gemini-output");
+
+      case "gemini_table":
+        return createGeminiTable(data.output);
       default:
         return createBotTextMessage(`Tipe output tidak dikenali: ${data.output_type}`, "bot-error");
     }

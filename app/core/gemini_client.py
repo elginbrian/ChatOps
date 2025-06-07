@@ -73,7 +73,20 @@ def handle_gemini_request(user_prompt: str, history: list):
     You are a helpful and intelligent Docker assistant. Your primary role is to assist users in managing their Docker environment.
     When a user asks a question that requires real-time information (e.g., "is my database container running?", "show me the details of nginx and redis containers"), you MUST use your available tools.
     You can call multiple tools in parallel in a single turn.
-    
+
+    IMPORTANT: If you need to present data in a tabular format, you MUST ONLY output a single, valid JSON object following this EXACT structure:
+    {{
+      "type": "table",
+      "data": {{
+        "headers": ["Header 1", "Header 2", ...],
+        "rows": [
+          ["Row 1 Cell 1", "Row 1 Cell 2", ...],
+          ["Row 2 Cell 1", "Row 2 Cell 2", ...]
+        ]
+      }}
+    }}
+    Do not add any text or explanation outside of this JSON object.
+
     IMPORTANT: If the user asks for "help", "bantuan", or "command list", you MUST NOT list the commands yourself. Instead, reply with the text: "Tentu, Anda dapat melihat semua daftar perintah yang tersedia dengan menekan tombol 'Panduan Perintah' di sidebar."
     """
 
@@ -85,9 +98,9 @@ def handle_gemini_request(user_prompt: str, history: list):
     
     gemini_history = []
     for item in history:
-        gemini_history.append({"role": "user", "parts": [{"text": item['user_command']}]})
-        bot_response_text = json.dumps(item.get('bot_response', {}).get('output'))
-        gemini_history.append({"role": "model", "parts": [{"text": bot_response_text}]})
+        gemini_history.append({{"role": "user", "parts": [{{"text": item['user_command']}}]}})
+        bot_response_text = json.dumps(item.get('bot_response', {{}}).get('output'))
+        gemini_history.append({{"role": "model", "parts": [{{"text": bot_response_text}}]}})
 
     chat = model.start_chat(history=gemini_history)
     
@@ -103,12 +116,12 @@ def handle_gemini_request(user_prompt: str, history: list):
                 command_id = function_call.name
                 params = dict(function_call.args)
                 
-                current_app.logger.info(f"Gemini calling function '{command_id}' with params: {params}")
+                current_app.logger.info(f"Gemini calling function '{{command_id}}' with params: {{params}}")
 
                 cmd_def = next((cmd for cmd in COMMAND_GUIDE if cmd["id"] == command_id), None)
                 
                 if not cmd_def:
-                    func_response = FunctionResponse(name=command_id, response={"status": "error", "message": f"Fungsi '{command_id}' tidak ditemukan."})
+                    func_response = FunctionResponse(name=command_id, response={{"status": "error", "message": f"Fungsi '{{command_id}}' tidak ditemukan."}})
                     tool_responses.append(Part(function_response=func_response))
                     continue
 
@@ -123,22 +136,30 @@ def handle_gemini_request(user_prompt: str, history: list):
                     
                     output_data, error_str = ACTION_HANDLERS[action](params)
                     
-                    func_response = FunctionResponse(name=command_id, response={"data": output_data, "error": error_str})
+                    func_response = FunctionResponse(name=command_id, response={{"data": output_data, "error": error_str}})
                     tool_responses.append(Part(function_response=func_response))
                 else:
-                    func_response = FunctionResponse(name=command_id, response={"status": "error", "message": f"Aksi untuk '{command_id}' tidak terdefinisi."})
+                    func_response = FunctionResponse(name=command_id, response={{"status": "error", "message": f"Aksi untuk '{{command_id}}' tidak terdefinisi."}})
                     tool_responses.append(Part(function_response=func_response))
                 
-
             response = chat.send_message(tool_responses)
         
         final_text = response.candidates[0].content.parts[0].text
-        return {"output": final_text, "error": None, "output_type": "gemini_text"}
+        
+        try:
+            json_data = json.loads(final_text)
+            if isinstance(json_data, dict) and json_data.get("type") == "table":
+                current_app.logger.info("Gemini generated a table.")
+                return {{"output": json_data.get("data"), "error": None, "output_type": "gemini_table"}}
+        except json.JSONDecodeError:
+            pass
+        
+        return {{"output": final_text, "error": None, "output_type": "gemini_text"}}
 
     except Exception as e:
-        current_app.logger.error(f"An unexpected error occurred with Gemini API: {e}", exc_info=True)
+        current_app.logger.error(f"An unexpected error occurred with Gemini API: {{e}}", exc_info=True)
         try:
-            current_app.logger.error(f"Last Gemini Response before error: {response}")
+            current_app.logger.error(f"Last Gemini Response before error: {{response}}")
         except NameError:
             pass
-        return {"output": None, "error": f"An unexpected error occurred with the Gemini API. Check server logs for details.", "output_type": "text"}
+        return {{"output": None, "error": f"An unexpected error occurred with the Gemini API. Check server logs for details.", "output_type": "text"}}
