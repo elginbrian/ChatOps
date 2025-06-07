@@ -8,39 +8,54 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   </head>
-  <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
+  <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden">
     <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
 
-    <div class="flex h-screen">
-      <aside class="w-64 bg-black/50 flex flex-col p-2 shrink-0 border-r border-[var(--border-color)]">
-        <div class="p-2">
-          <button id="newChatButton" class="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--bg-tertiary)] transition-colors">
+    <div class="relative h-screen flex">
+      <aside
+        id="sidebar"
+        class="w-64 bg-black/50 flex flex-col p-2 shrink-0 border-r border-[var(--border-color)] absolute md:relative inset-y-0 left-0 z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300"
+        style="transition-timing-function: var(--ease-out-quint)"
+      >
+        <div class="flex items-center justify-between p-2">
+          <h2 class="text-lg font-bold">Riwayat</h2>
+          <button id="closeSidebarButton" class="md:hidden text-gray-500 hover:text-white text-2xl p-1 interactive-button">
+            <ion-icon name="close-outline"></ion-icon>
+          </button>
+        </div>
+        <div class="mt-4">
+          <button id="newChatButton" class="w-full flex items-center justify-start gap-2 p-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--bg-tertiary)] transition-colors interactive-button">
             <ion-icon name="add-circle-outline" class="text-xl"></ion-icon>
             Percakapan Baru
           </button>
         </div>
-        <nav id="conversationList" class="flex-grow overflow-y-auto space-y-1 pr-1"></nav>
+        <nav id="conversationList" class="flex-grow overflow-y-auto space-y-1 pr-1 mt-4"></nav>
         <div class="p-2 border-t border-[var(--border-color)]">
-          <button id="toggleGuideButton" class="w-full flex items-center gap-2 p-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+          <button id="toggleGuideButton" class="w-full flex items-center gap-2 p-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors interactive-button">
             <ion-icon name="help-circle-outline" class="text-xl"></ion-icon>
             Panduan Perintah
           </button>
         </div>
       </aside>
 
-      <main class="w-full h-screen max-w-5xl mx-auto bg-[var(--bg-secondary)] shadow-2xl flex flex-col overflow-hidden">
+      <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-20 md:hidden hidden"></div>
+
+      <main class="w-full h-screen bg-[var(--bg-secondary)] shadow-2xl flex flex-col overflow-hidden">
         <header class="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0">
           <div class="flex items-center gap-3">
-            <ion-icon name="terminal-outline" class="text-2xl text-[var(--text-secondary)]"></ion-icon>
-            <h1 id="chatHeader" class="text-lg font-bold text-[var(--text-primary)] tracking-wide">ChatOps</h1>
+            <button id="openSidebarButton" class="md:hidden text-gray-400 hover:text-white text-2xl p-1 interactive-button">
+              <ion-icon name="menu-outline"></ion-icon>
+            </button>
+            <ion-icon name="terminal-outline" class="text-2xl text-[var(--text-secondary)] hidden sm:block"></ion-icon>
+            <h1 id="chatHeader" class="text-lg font-bold text-[var(--text-primary)] tracking-wide truncate">ChatOps</h1>
           </div>
         </header>
 
         <div id="commandGuideModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div class="bg-[var(--bg-secondary)] p-6 rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto border border-[var(--border-color)] animate-fadeIn">
+          <div class="bg-[var(--bg-secondary)] p-6 rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto border border-[var(--border-color)] animate-modal-in">
             <div class="flex justify-between items-center mb-5">
               <h2 class="text-2xl font-semibold text-white">Panduan Perintah</h2>
-              <button id="closeGuideButton" class="text-gray-500 hover:text-white text-3xl p-1"><ion-icon name="close-circle-outline"></ion-icon></button>
+              <button id="closeGuideButton" class="text-gray-500 hover:text-white text-3xl p-1 interactive-button"><ion-icon name="close-circle-outline"></ion-icon></button>
             </div>
             <div id="commandGuideContent" class="space-y-4 text-sm"></div>
           </div>
@@ -54,11 +69,11 @@
               type="text"
               id="commandInput"
               name="command"
-              class="flex-grow bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] px-4 py-3 rounded-lg focus:ring-2 focus:ring-white/80 focus:border-transparent focus:outline-none"
+              class="flex-grow bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] px-4 py-3 rounded-lg focus:ring-2 focus:ring-white/80 focus:border-transparent focus:outline-none transition-shadow"
               placeholder="Ketik perintah di sini..."
               autocomplete="off"
             />
-            <button type="submit" id="sendButton" class="bg-white hover:bg-gray-200 text-black font-semibold p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center h-[50px] w-[50px] disabled:bg-gray-600">
+            <button type="submit" id="sendButton" class="bg-white hover:bg-gray-200 text-black font-semibold p-2.5 rounded-lg flex items-center justify-center h-[50px] w-[50px] disabled:bg-gray-600 interactive-button">
               <div id="loadingIndicator" class="hidden animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black"></div>
               <ion-icon name="arrow-up-outline" id="sendIcon" class="text-2xl"></ion-icon>
             </button>
@@ -77,7 +92,7 @@
     </template>
 
     <template id="base-message-template">
-      <article class="chat-message flex items-start gap-3.5 max-w-full animate-fadeIn">
+      <article class="chat-message flex items-start gap-3.5 max-w-full animate-message-in">
         <div class="icon-container flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5">
           <ion-icon class="icon text-lg"></ion-icon>
         </div>
@@ -100,7 +115,7 @@
       <div class="bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]">
         <div class="p-3 bg-[var(--bg-secondary)] flex justify-between items-center">
           <p class="text-gray-300 font-semibold">Inspect: <code class="text-gray-200 object-name"></code></p>
-          <button class="copy-json-button text-gray-400 hover:text-white" title="Salin JSON">
+          <button class="copy-json-button text-gray-400 hover:text-white interactive-button" title="Salin JSON">
             <ion-icon name="copy-outline"></ion-icon>
           </button>
         </div>
@@ -122,13 +137,13 @@
         <td class="container-ports p-3 align-middle text-gray-400 font-mono hidden lg:table-cell"></td>
         <td class="p-3 align-middle">
           <div class="flex items-center justify-end gap-2">
-            <button title="Inspect Container" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
+            <button title="Inspect Container" class="interactive-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
               <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
             </button>
-            <button title="View Logs" class="logs-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white disabled:opacity-50">
+            <button title="View Logs" class="logs-button interactive-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white disabled:opacity-50">
               <ion-icon name="document-text-outline" class="text-lg"></ion-icon>
             </button>
-            <button title="Stop Container" class="stop-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-yellow-700/50 text-gray-300 hover:text-white disabled:opacity-50">
+            <button title="Stop Container" class="stop-button interactive-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-yellow-700/50 text-gray-300 hover:text-white disabled:opacity-50">
               <ion-icon name="stop-circle-outline" class="text-lg"></ion-icon>
             </button>
           </div>
@@ -158,10 +173,12 @@
         <td class="created_at p-3 align-middle text-gray-400 hidden md:table-cell"></td>
         <td class="p-3 align-middle">
           <div class="flex items-center justify-end gap-2">
-            <button title="Inspect Volume" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
+            <button title="Inspect Volume" class="interactive-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
               <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
             </button>
-            <button title="Remove Volume" class="remove-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-red-700/50 text-gray-300 hover:text-white"><ion-icon name="trash-outline" class="text-lg"></ion-icon></button>
+            <button title="Remove Volume" class="remove-button interactive-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-red-700/50 text-gray-300 hover:text-white">
+              <ion-icon name="trash-outline" class="text-lg"></ion-icon>
+            </button>
           </div>
         </td>
       </tr>
@@ -179,7 +196,9 @@
         <td class="driver p-3 align-middle text-gray-400 font-mono hidden sm:table-cell"></td>
         <td class="scope p-3 align-middle text-gray-400 hidden md:table-cell"></td>
         <td class="p-3 align-middle text-right">
-          <button title="Inspect Network" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white"><ion-icon name="code-slash-outline" class="text-lg"></ion-icon></button>
+          <button title="Inspect Network" class="interactive-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
+            <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
+          </button>
         </td>
       </tr>
     </template>
@@ -210,7 +229,28 @@
     <script id="command-guide-data" type="application/json">
       {{ command_guide | tojson | safe }}
     </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("sidebar-overlay");
+        const openBtn = document.getElementById("openSidebarButton");
+        const closeBtn = document.getElementById("closeSidebarButton");
 
+        function openSidebar() {
+          sidebar.classList.remove("-translate-x-full");
+          overlay.classList.remove("hidden");
+        }
+
+        function closeSidebar() {
+          sidebar.classList.add("-translate-x-full");
+          overlay.classList.add("hidden");
+        }
+
+        openBtn.addEventListener("click", openSidebar);
+        closeBtn.addEventListener("click", closeSidebar);
+        overlay.addEventListener("click", closeSidebar);
+      });
+    </script>
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
