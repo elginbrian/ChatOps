@@ -1,16 +1,30 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // --- STATE ---
+  let activeConversationId = null;
+  let conversations = [];
+
+  // --- SELECTORS ---
   const commandForm = document.getElementById("commandForm");
   const commandInput = document.getElementById("commandInput");
   const sendButton = document.getElementById("sendButton");
   const sendIcon = document.getElementById("sendIcon");
   const loadingIndicator = document.getElementById("loadingIndicator");
   const chatFeed = document.getElementById("chatFeed");
+  const chatHeader = document.getElementById("chatHeader");
+
+  // Sidebar selectors
+  const newChatButton = document.getElementById("newChatButton");
+  const conversationList = document.getElementById("conversationList");
+
+  // Modal selectors
   const toggleGuideButton = document.getElementById("toggleGuideButton");
   const commandGuideModal = document.getElementById("commandGuideModal");
   const closeGuideButton = document.getElementById("closeGuideButton");
   const commandGuideContent = document.getElementById("commandGuideContent");
+
   const rawCommandGuide = JSON.parse(document.getElementById("command-guide-data").textContent);
 
+  // --- UTILITY & RENDER FUNCTIONS ---
   function showToast(message, isError = false) {
     const container = document.getElementById("toast-container");
     const toast = document.createElement("div");
@@ -36,7 +50,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
   }
 
-  // --- Element Creation Functions ---
   function createBaseMessageElement(extraClasses = "") {
     const template = document.getElementById("base-message-template").content.cloneNode(true);
     const article = template.querySelector(".chat-message");
@@ -330,6 +343,7 @@ document.addEventListener("DOMContentLoaded", () => {
       chatFeed.scrollTop = chatFeed.scrollHeight;
     }, 50);
   }
+
   function setLoadingState(isLoading) {
     sendIcon.classList.toggle("hidden", isLoading);
     loadingIndicator.classList.toggle("hidden", !isLoading);
@@ -338,40 +352,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isLoading) commandInput.focus();
   }
 
-  async function submitCommand(commandText) {
-    if (!commandText) return;
-    appendToFeed(createUserMessageElement(commandText));
-    commandInput.value = "";
-    appendToFeed(createTypingIndicator());
-    setLoadingState(true);
-    const removeIndicator = () => {
-      const indicator = document.getElementById("typingIndicator");
-      if (indicator) indicator.remove();
-    };
-    try {
-      const response = await fetch("/api/command", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ command: commandText }) });
-      removeIndicator();
-      const data = await response.json();
-      data.received_command = commandText;
-      if (!response.ok && !data.error) {
-        data.error = `Server Error: ${response.status}`;
-      }
-      const botResponse = createBotResponse(data);
-      if (botResponse) appendToFeed(botResponse);
-    } catch (error) {
-      removeIndicator();
-      console.error("Fetch error:", error);
-      appendToFeed(createBotTextMessage(`Kesalahan Jaringan: ${error.message}.`, "bot-error"));
-    } finally {
-      setLoadingState(false);
-    }
-  }
-
   function handleQuickAction(action, name) {
     let command = `${action} ${name}`;
     showToast(`Menjalankan: ${command}`);
     submitCommand(command);
   }
+
   function toggleModal(show) {
     if (show) {
       commandGuideModal.classList.remove("hidden");
@@ -393,16 +379,173 @@ document.addEventListener("DOMContentLoaded", () => {
         .join("") || '<p class="text-gray-500">Panduan perintah tidak tersedia.</p>';
   }
 
+  function renderSidebar() {
+    conversationList.innerHTML = "";
+    conversations.forEach((conv) => {
+      const template = document.getElementById("conversation-item-template").content.cloneNode(true);
+      const link = template.querySelector(".conversation-link");
+      link.dataset.id = conv.id;
+      link.querySelector(".conversation-title").textContent = conv.title;
+
+      if (conv.id === activeConversationId) {
+        link.classList.add("bg-[var(--bg-tertiary)]");
+      }
+
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        switchConversation(conv.id);
+      });
+
+      const deleteButton = template.querySelector(".delete-conversation-button");
+      deleteButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await deleteConversation(conv.id);
+      });
+
+      conversationList.appendChild(template);
+    });
+  }
+
+  async function loadConversationMessages(convId) {
+    chatFeed.innerHTML = "";
+    try {
+      const response = await fetch(`/api/conversation/${convId}`);
+      if (!response.ok) throw new Error("Gagal memuat percakapan.");
+      const messages = await response.json();
+
+      messages.forEach((entry) => {
+        appendToFeed(createUserMessageElement(entry.user_command));
+        const botResponseData = entry.bot_response;
+        botResponseData.received_command = entry.user_command;
+        appendToFeed(createBotResponse(botResponseData));
+      });
+    } catch (error) {
+      console.error(error);
+      appendToFeed(createBotTextMessage(error.message, "bot-error"));
+    }
+  }
+
+  async function switchConversation(convId) {
+    if (convId === activeConversationId) return;
+
+    activeConversationId = convId;
+    const activeConv = conversations.find((c) => c.id === convId);
+    chatHeader.textContent = activeConv ? activeConv.title : "Percakapan";
+
+    renderSidebar();
+    await loadConversationMessages(convId);
+  }
+
+  function startNewChat() {
+    activeConversationId = null;
+    chatFeed.innerHTML = "";
+    chatHeader.textContent = "Percakapan Baru";
+    appendToFeed(createBotTextMessage("Selamat datang! Ketik perintah untuk memulai percakapan baru.", "system-info"));
+    renderSidebar();
+    commandInput.focus();
+  }
+
+  async function deleteConversation(convId) {
+    if (!confirm("Anda yakin ingin menghapus percakapan ini?")) return;
+
+    try {
+      const response = await fetch(`/api/conversation/${convId}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Gagal menghapus percakapan.");
+
+      conversations = conversations.filter((c) => c.id !== convId);
+      showToast("Percakapan dihapus.");
+
+      if (convId === activeConversationId) {
+        startNewChat();
+      } else {
+        renderSidebar();
+      }
+    } catch (error) {
+      console.error(error);
+      showToast(error.message, true);
+    }
+  }
+
+  async function submitCommand(commandText) {
+    if (!commandText) return;
+
+    appendToFeed(createUserMessageElement(commandText));
+    commandInput.value = "";
+    appendToFeed(createTypingIndicator());
+    setLoadingState(true);
+
+    const removeIndicator = () => {
+      const indicator = document.getElementById("typingIndicator");
+      if (indicator) indicator.remove();
+    };
+
+    try {
+      const payload = {
+        command: commandText,
+        conversation_id: activeConversationId,
+      };
+
+      const response = await fetch("/api/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      removeIndicator();
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Server Error: ${response.status}`);
+      }
+
+      data.received_command = commandText;
+      appendToFeed(createBotResponse(data));
+
+      if (!activeConversationId && data.conversation_id) {
+        activeConversationId = data.conversation_id;
+        await init();
+      }
+    } catch (error) {
+      removeIndicator();
+      console.error("Fetch error:", error);
+      appendToFeed(createBotTextMessage(error.message, "bot-error"));
+    } finally {
+      setLoadingState(false);
+    }
+  }
+
+  async function init() {
+    try {
+      const response = await fetch("/api/conversations");
+      if (!response.ok) throw new Error("Gagal mengambil daftar percakapan.");
+      conversations = await response.json();
+
+      const lastActive = conversations.find((c) => c.is_last_active);
+      if (lastActive) {
+        await switchConversation(lastActive.id);
+      } else {
+        startNewChat();
+      }
+    } catch (error) {
+      console.error(error);
+      startNewChat();
+    }
+  }
+
   commandForm.addEventListener("submit", (e) => {
     e.preventDefault();
     submitCommand(commandInput.value.trim());
   });
+
+  newChatButton.addEventListener("click", startNewChat);
+
   toggleGuideButton.addEventListener("click", () => toggleModal(true));
   closeGuideButton.addEventListener("click", () => toggleModal(false));
   commandGuideModal.addEventListener("click", (event) => {
     if (event.target === commandGuideModal) toggleModal(false);
   });
-  appendToFeed(createBotTextMessage("Selamat datang di ChatOps! Ketik perintah untuk mengelola Docker container Anda atau klik 'Panduan' untuk melihat daftar perintah.", "system-info"));
+
   populateCommandGuide();
-  commandInput.focus();
+  init();
 });

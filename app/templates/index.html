@@ -8,50 +8,73 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   </head>
-  <body class="flex flex-col justify-center items-center min-h-screen sm:p-4 selection:bg-gray-700 selection:text-white">
+  <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
     <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
 
-    <main class="w-full h-screen sm:h-[90vh] max-w-5xl bg-[var(--bg-secondary)] shadow-2xl shadow-black/50 sm:rounded-2xl flex flex-col overflow-hidden border border-[var(--border-color)]">
-      <header class="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0">
-        <div class="flex items-center gap-3">
-          <ion-icon name="terminal-outline" class="text-2xl text-[var(--text-secondary)]"></ion-icon>
-          <h1 class="text-lg font-bold text-[var(--text-primary)] tracking-wide">ChatOps</h1>
-        </div>
-        <button id="toggleGuideButton" class="text-sm text-[var(--text-secondary)] hover:text-white focus:outline-none flex items-center p-2 rounded-lg hover:bg-[var(--bg-tertiary)]">
-          <ion-icon name="help-circle-outline" class="text-xl mr-1.5"></ion-icon>
-          <span class="hidden sm:inline">Panduan</span>
-        </button>
-      </header>
-
-      <div id="commandGuideModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto border border-[var(--border-color)] animate-fadeIn">
-          <div class="flex justify-between items-center mb-5">
-            <h2 class="text-2xl font-semibold text-white">Panduan Perintah</h2>
-            <button id="closeGuideButton" class="text-gray-500 hover:text-white text-3xl p-1"><ion-icon name="close-circle-outline"></ion-icon></button>
-          </div>
-          <div id="commandGuideContent" class="space-y-4 text-sm"></div>
-        </div>
-      </div>
-
-      <section id="chatFeed" aria-live="polite" class="flex-grow p-4 md:p-6 space-y-6 overflow-y-auto flex flex-col"></section>
-
-      <section aria-labelledby="command-input-heading" class="p-3 md:p-4 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/90 shrink-0">
-        <form id="commandForm" class="flex items-center gap-3">
-          <input
-            type="text"
-            id="commandInput"
-            name="command"
-            class="flex-grow bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] px-4 py-3 rounded-lg focus:ring-2 focus:ring-white/80 focus:border-transparent focus:outline-none"
-            placeholder="Ketik perintah di sini..."
-            autocomplete="off"
-          />
-          <button type="submit" id="sendButton" class="bg-white hover:bg-gray-200 text-black font-semibold p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center h-[50px] w-[50px] disabled:bg-gray-600">
-            <div id="loadingIndicator" class="hidden animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black"></div>
-            <ion-icon name="arrow-up-outline" id="sendIcon" class="text-2xl"></ion-icon>
+    <div class="flex h-screen">
+      <aside class="w-64 bg-black/50 flex flex-col p-2 shrink-0">
+        <div class="p-2">
+          <button id="newChatButton" class="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--bg-tertiary)] transition-colors">
+            <ion-icon name="add-circle-outline" class="text-xl"></ion-icon>
+            Percakapan Baru
           </button>
-        </form>
-      </section>
-    </main>
+        </div>
+        <nav id="conversationList" class="flex-grow overflow-y-auto space-y-1 pr-1"></nav>
+        <div class="p-2 border-t border-[var(--border-color)]">
+          <button id="toggleGuideButton" class="w-full flex items-center gap-2 p-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+            <ion-icon name="help-circle-outline" class="text-xl"></ion-icon>
+            Panduan Perintah
+          </button>
+        </div>
+      </aside>
+
+      <main class="w-full h-screen max-w-5xl mx-auto bg-[var(--bg-secondary)] shadow-2xl flex flex-col overflow-hidden">
+        <header class="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0">
+          <div class="flex items-center gap-3">
+            <ion-icon name="terminal-outline" class="text-2xl text-[var(--text-secondary)]"></ion-icon>
+            <h1 id="chatHeader" class="text-lg font-bold text-[var(--text-primary)] tracking-wide">Percakapan Baru</h1>
+          </div>
+        </header>
+
+        <div id="commandGuideModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div class="bg-[var(--bg-secondary)] p-6 rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto border border-[var(--border-color)] animate-fadeIn">
+            <div class="flex justify-between items-center mb-5">
+              <h2 class="text-2xl font-semibold text-white">Panduan Perintah</h2>
+              <button id="closeGuideButton" class="text-gray-500 hover:text-white text-3xl p-1"><ion-icon name="close-circle-outline"></ion-icon></button>
+            </div>
+            <div id="commandGuideContent" class="space-y-4 text-sm"></div>
+          </div>
+        </div>
+
+        <section id="chatFeed" aria-live="polite" class="flex-grow p-4 md:p-6 space-y-6 overflow-y-auto flex flex-col"></section>
+
+        <section aria-labelledby="command-input-heading" class="p-3 md:p-4 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/90 shrink-0">
+          <form id="commandForm" class="flex items-center gap-3">
+            <input
+              type="text"
+              id="commandInput"
+              name="command"
+              class="flex-grow bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] px-4 py-3 rounded-lg focus:ring-2 focus:ring-white/80 focus:border-transparent focus:outline-none"
+              placeholder="Ketik perintah di sini..."
+              autocomplete="off"
+            />
+            <button type="submit" id="sendButton" class="bg-white hover:bg-gray-200 text-black font-semibold p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center h-[50px] w-[50px] disabled:bg-gray-600">
+              <div id="loadingIndicator" class="hidden animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black"></div>
+              <ion-icon name="arrow-up-outline" id="sendIcon" class="text-2xl"></ion-icon>
+            </button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <template id="conversation-item-template">
+      <a href="#" class="conversation-link group flex items-center justify-between p-2.5 rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
+        <span class="truncate conversation-title"></span>
+        <button class="delete-conversation-button hidden group-hover:block text-gray-500 hover:text-white">
+          <ion-icon name="trash-outline"></ion-icon>
+        </button>
+      </a>
+    </template>
 
     <template id="base-message-template">
       <article class="chat-message flex items-start gap-3.5 max-w-full animate-fadeIn">
@@ -85,104 +108,13 @@
       </div>
     </template>
 
-    <template id="container-table-row-template">
-      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-        <td class="p-3 align-middle"><span class="status-indicator w-2.5 h-2.5 rounded-full inline-block"></span></td>
-        <td class="p-3 align-middle font-medium text-gray-200">
-          <div class="flex items-center gap-2">
-            <span class="container-name"></span>
-            <ion-icon name="copy-outline" class="copy-button cursor-pointer text-gray-500 hover:text-white"></ion-icon>
-          </div>
-          <div class="container-id text-xs text-gray-500 font-mono"></div>
-        </td>
-        <td class="container-image p-3 align-middle text-gray-400 hidden md:table-cell"></td>
-        <td class="container-ports p-3 align-middle text-gray-400 font-mono hidden lg:table-cell"></td>
-        <td class="p-3 align-middle">
-          <div class="flex items-center justify-end gap-2">
-            <button title="Inspect Container" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
-              <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
-            </button>
-            <button title="View Logs" class="logs-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white disabled:opacity-50">
-              <ion-icon name="document-text-outline" class="text-lg"></ion-icon>
-            </button>
-            <button title="Stop Container" class="stop-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-yellow-700/50 text-gray-300 hover:text-white disabled:opacity-50">
-              <ion-icon name="stop-circle-outline" class="text-lg"></ion-icon>
-            </button>
-          </div>
-        </td>
-      </tr>
-    </template>
-
-    <template id="image-table-row-template">
-      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-        <td class="repository p-3 align-middle font-medium text-gray-200"></td>
-        <td class="tag p-3 align-middle text-gray-400"></td>
-        <td class="id p-3 align-middle text-gray-500 font-mono hidden sm:table-cell"></td>
-        <td class="created p-3 align-middle text-gray-400 hidden md:table-cell"></td>
-        <td class="size p-3 align-middle text-gray-300 text-right"></td>
-      </tr>
-    </template>
-
-    <template id="volume-table-row-template">
-      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-        <td class="p-3 align-middle font-medium text-gray-200">
-          <div class="flex items-center gap-2">
-            <span class="name"></span>
-            <ion-icon name="copy-outline" class="copy-button cursor-pointer text-gray-500 hover:text-white"></ion-icon>
-          </div>
-        </td>
-        <td class="driver p-3 align-middle text-gray-400 font-mono hidden sm:table-cell"></td>
-        <td class="created_at p-3 align-middle text-gray-400 hidden md:table-cell"></td>
-        <td class="p-3 align-middle">
-          <div class="flex items-center justify-end gap-2">
-            <button title="Inspect Volume" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
-              <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
-            </button>
-            <button title="Remove Volume" class="remove-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-red-700/50 text-gray-300 hover:text-white"><ion-icon name="trash-outline" class="text-lg"></ion-icon></button>
-          </div>
-        </td>
-      </tr>
-    </template>
-
-    <template id="network-table-row-template">
-      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-        <td class="p-3 align-middle font-medium text-gray-200">
-          <div class="flex items-center gap-2">
-            <span class="name"></span>
-            <ion-icon name="copy-outline" class="copy-button cursor-pointer text-gray-500 hover:text-white"></ion-icon>
-          </div>
-          <div class="id text-xs text-gray-500 font-mono"></div>
-        </td>
-        <td class="driver p-3 align-middle text-gray-400 font-mono hidden sm:table-cell"></td>
-        <td class="scope p-3 align-middle text-gray-400 hidden md:table-cell"></td>
-        <td class="p-3 align-middle text-right">
-          <button title="Inspect Network" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white"><ion-icon name="code-slash-outline" class="text-lg"></ion-icon></button>
-        </td>
-      </tr>
-    </template>
-
-    <template id="stats-table-row-template">
-      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-        <td class="container_name p-3 align-middle font-medium text-gray-200"></td>
-        <td class="cpu_usage p-3 align-middle text-gray-400 font-mono"></td>
-        <td class="mem_usage p-3 align-middle text-gray-400 font-mono"></td>
-      </tr>
-    </template>
-
-    <template id="logs-table-row-template">
-      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
-        <td class="timestamp p-3 align-top text-gray-500 font-mono w-1/4"></td>
-        <td class="log_entry p-3 align-top text-gray-300 font-mono whitespace-pre-wrap word-wrap break-all w-3/4"></td>
-      </tr>
-    </template>
-
-    <template id="action-receipt-template">
-      <div class="wrapper bg-[var(--bg-tertiary)] rounded-r-xl rounded-b-xl p-4 min-w-[300px] border-l-4">
-        <p class="status-text text-lg font-bold text-white mb-2"></p>
-        <p class="resource-text text-sm text-gray-300"><span class="resource-type"></span>: <code class="font-semibold text-gray-200 resource-name"></code></p>
-        <div class="details-list mt-3 pt-3 border-t border-[var(--border-color)] space-y-1"></div>
-      </div>
-    </template>
+    <template id="container-table-row-template"> </template>
+    <template id="image-table-row-template"> </template>
+    <template id="volume-table-row-template"> </template>
+    <template id="network-table-row-template"> </template>
+    <template id="stats-table-row-template"> </template>
+    <template id="logs-table-row-template"> </template>
+    <template id="action-receipt-template"> </template>
 
     <script id="command-guide-data" type="application/json">
       {{ command_guide | tojson | safe }}

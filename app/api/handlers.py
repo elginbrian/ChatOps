@@ -1,6 +1,6 @@
 import re
 from app.models.commands import COMMAND_GUIDE
-from app.core import container_manager, image_manager, compose_manager, volume_manager, network_manager, system_manager
+from app.core import container_manager, image_manager, compose_manager, volume_manager, network_manager, system_manager, history_manager
 from flask import current_app
 
 ACTION_HANDLERS = {
@@ -28,6 +28,7 @@ ACTION_HANDLERS = {
     "compose_down": compose_manager.compose_down,
 
     "prune_system": system_manager.prune_system,
+    "clear_history": history_manager.clear_history,
 }
 
 INSPECT_ACTION_MAP = {
