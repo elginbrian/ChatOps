@@ -126,5 +126,40 @@ COMMAND_GUIDE = [
         "action": "compose_down",
         "description": "Menjalankan 'docker-compose down'.",
         "example": "compose-down"
+    },
+    {
+        "id": "list_volumes",
+        "pattern": r"^(?:tampilkan|list|lihat)\s+volume(?:s)?|docker\s+volume\s+ls$",
+        "action": "list_volumes",
+        "description": "Menampilkan semua volume Docker.",
+        "example": "list volumes"
+    },
+    {
+        "id": "remove_volume",
+        "pattern": r"^(?:hapus|rm)\s+volume\s+(?P<name>[a-zA-Z0-9_.-]+)$",
+        "action": "remove_volume",
+        "description": "Menghapus volume yang tidak terpakai.",
+        "example": "rm volume data_lama"
+    },
+    {
+        "id": "list_networks",
+        "pattern": r"^(?:tampilkan|list|lihat)\s+network(?:s)?|docker\s+network\s+ls$",
+        "action": "list_networks",
+        "description": "Menampilkan semua network Docker.",
+        "example": "list networks"
+    },
+    {
+        "id": "inspect_object",
+        "pattern": r"^(?:periksa|inspect|detail)\s+(?P<object_type>container|kontainer|image|volume|network)\s+(?P<name>[a-zA-Z0-9_.-]+)$",
+        "action": "inspect_object",
+        "description": "Menampilkan informasi detail (JSON) dari sebuah objek.",
+        "example": "inspect container webku"
+    },
+    {
+        "id": "system_prune",
+        "pattern": r"^(?:sistem\s+bersihkan|system\s+prune)$",
+        "action": "prune_system",
+        "description": "Membersihkan kontainer, image, volume, dan network yang tidak terpakai.",
+        "example": "system prune"
     }
 ]

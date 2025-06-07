@@ -2,6 +2,7 @@ import docker
 import re
 from flask import current_app
 from .docker_client import get_docker_client
+import json
 
 def is_self_target(target_name: str) -> bool: #
     CHATOP_CONTAINER_NAME = current_app.config.get('CHATOP_CONTAINER_NAME') #
@@ -312,3 +313,19 @@ def view_stats(params: dict) -> tuple[list, str]: #
     except Exception as e: #
         current_app.logger.error(f"Error saat mengambil statistik: {e}") #
         return [], f"Error tak terduga: {str(e)}" #
+    
+def inspect_container(params: dict) -> tuple[str, str]:
+    client = get_docker_client()
+    if not client:
+        return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name:
+        return None, "Error: Nama kontainer dibutuhkan."
+    try:
+        container = client.containers.get(name)
+        formatted_json = json.dumps(container.attrs, indent=2)
+        return formatted_json, ""
+    except docker.errors.NotFound:
+        return None, f"Error: Kontainer '{name}' tidak ditemukan."
+    except Exception as e:
+        return None, f"Error tak terduga: {str(e)}"

@@ -2,6 +2,7 @@ import docker
 import re
 from flask import current_app
 from .docker_client import get_docker_client
+import json
 
 def pull_image(params: dict) -> tuple[dict, str]: #
     client = get_docker_client() #
@@ -54,3 +55,19 @@ def list_images(params: dict) -> tuple[list, str]: #
     except docker.errors.APIError as e: 
         return None, f"Error Docker API: {e.explanation or str(e)}" 
     except Exception as e: return None, f"Error tak terduga: {str(e)}" 
+
+def inspect_image(params: dict) -> tuple[str, str]:
+    client = get_docker_client()
+    if not client:
+        return None, "Error: Tidak dapat terhubung ke Docker daemon."
+    name = params.get("name")
+    if not name:
+        return None, "Error: Nama image dibutuhkan."
+    try:
+        image = client.images.get(name)
+        formatted_json = json.dumps(image.attrs, indent=2)
+        return formatted_json, ""
+    except docker.errors.ImageNotFound:
+        return None, f"Error: Image '{name}' tidak ditemukan."
+    except Exception as e:
+        return None, f"Error tak terduga: {str(e)}"
