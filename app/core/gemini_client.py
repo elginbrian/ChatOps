@@ -49,7 +49,7 @@ def handle_gemini_request(user_prompt: str, history: list):
     """
 
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-pro-latest",
+        model_name="gemini-1.5-flash",
         system_instruction=system_prompt,
         tools=[docker_tool]
     )
