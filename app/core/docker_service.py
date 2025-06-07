@@ -48,9 +48,6 @@ def is_self_target(target_name: str) -> bool:
     return False
 
 def list_containers(params: dict) -> tuple[list, str]:
-    """
-    Mengembalikan daftar kontainer sebagai list of dictionaries, bukan string.
-    """
     client = get_docker_client()
     if not client:
         return None, "Error: Tidak dapat terhubung ke Docker daemon."
@@ -93,58 +90,6 @@ def list_containers(params: dict) -> tuple[list, str]:
     except Exception as e:
         current_app.logger.exception("Error tak terduga saat list containers:")
         return None, f"Error tak terduga: {str(e)}"
-
-# Fungsi lain (run_container, stop_container, etc.) tetap sama
-# ... (sisa kode dari docker_service.py tidak diubah)
-def format_container_list(containers):
-    if not containers:
-        return "Tidak ada kontainer."
-    CHATOP_CONTAINER_NAME = current_app.config.get('CHATOP_CONTAINER_NAME')
-    
-    header = [
-        ("CONTAINER ID", 14), ("IMAGE", 25), ("STATUS", 20), ("PORTS", 25), ("NAMES", 30)
-    ]
-   
-    output = ""
-    for name, width in header:
-        output += f"{name:<{width}}"
-    output += "\n"
-    output += "-" * (sum(w for _, w in header)) + "\n"
-
-    for container in containers:
-        if CHATOP_CONTAINER_NAME and (container.name == CHATOP_CONTAINER_NAME or container.short_id == CHATOP_CONTAINER_NAME or container.id == CHATOP_CONTAINER_NAME):
-            name_display = f"{container.name} (Aplikasi Ini)"
-        else:
-            name_display = container.name
-        
-        image_tags = container.image.tags
-        image_display = image_tags[0] if image_tags else container.attrs['Config']['Image']
-        status = container.status
-        ports = container.ports
-        ports_str_list = []
-        if ports:
-            for _internal_port, host_ports_list in ports.items():
-                if host_ports_list:
-                    for host_port_info in host_ports_list:
-                        host_ip = host_port_info.get('HostIp', '0.0.0.0')
-                        host_port = host_port_info.get('HostPort', '')
-                        if host_ip == '::': host_ip = '[::]'
-                        ports_str_list.append(f"{host_ip}:{host_port}->{_internal_port}")
-        
-        row_data = {
-            "CONTAINER ID": container.short_id,
-            "IMAGE": image_display,
-            "STATUS": status,
-            "PORTS": ', '.join(ports_str_list),
-            "NAMES": name_display
-        }
-
-        for name, width in header:
-            val = row_data.get(name, "")
-            output += f"{val[:width-1]:<{width}}"
-        output += "\n"
-
-    return output.strip()
 
 def run_container(params: dict) -> tuple[str, str]:
     client = get_docker_client()
@@ -251,7 +196,7 @@ def view_logs(params: dict) -> tuple[str, str]:
     client = get_docker_client()
     if not client: return "", "Error: Tidak dapat terhubung ke Docker daemon."
     name = params.get("name")
-    lines_str = params.get("lines", "50")
+    lines_str = params.get("lines") or "50"
     if not name: return "", "Error: Nama kontainer dibutuhkan."
     if not re.match(r"^[a-zA-Z0-9_.-]+$", name): return "", "Error: Nama kontainer mengandung karakter tidak valid."
     
@@ -290,7 +235,15 @@ def view_stats(params: dict) -> tuple[str, str]:
         
         cpu_percent = 0.0
         if system_delta > 0.0 and cpu_delta > 0.0:
-            cpu_percent = (cpu_delta / system_delta) * len(stats['cpu_stats']['cpu_usage']['percpu_usage'] or [1]) * 100.0
+            number_cpus = stats.get('cpu_stats', {}).get('online_cpus')
+            if number_cpus is None:
+                per_cpu_usage_list = stats.get('cpu_stats', {}).get('cpu_usage', {}).get('percpu_usage')
+                if per_cpu_usage_list:
+                    number_cpus = len(per_cpu_usage_list)
+                else:
+                    number_cpus = 1
+            
+            cpu_percent = (cpu_delta / system_delta) * number_cpus * 100.0
 
         output = (
             f"Statistik untuk Kontainer: {container.name}\n"
@@ -324,54 +277,33 @@ def pull_image(params: dict) -> tuple[str, str]:
         current_app.logger.exception(f"Error tak terduga saat pull image '{image_name}':")
         return "", f"Error tak terduga saat pull '{image_name}': {str(e)}"
 
-def format_image_list(images):
-    if not images:
-        return "Tidak ada image."
-    header = [
-        ("REPOSITORY", 30), ("TAG", 20), ("IMAGE ID", 15), ("CREATED", 25), ("SIZE (MB)", 10)
-    ]
-    output = ""
-    for name, width in header:
-        output += f"{name:<{width}}"
-    output += "\n"
-    output += "-" * (sum(w for _, w in header)) + "\n"
-
-    for img in images:
-        repo_tags = img.tags
-        if not repo_tags:
-            repo = "<none>"
-            tag = "<none>"
-        else:
-            parts = repo_tags[0].rsplit(':', 1)
-            repo = parts[0]
-            tag = parts[1] if len(parts) > 1 else "<none>"
-        
-        created_at = img.attrs['Created'][:19].replace('T', ' ')
-        size_mb = round(img.attrs['Size'] / (1024 * 1024), 2)
-        
-        row_data = {
-            "REPOSITORY": repo,
-            "TAG": tag,
-            "IMAGE ID": img.short_id[7:],
-            "CREATED": created_at,
-            "SIZE (MB)": str(size_mb)
-        }
-        for name, width in header:
-            val = row_data.get(name, "")
-            output += f"{val[:width-1]:<{width}}"
-        output += "\n"
-        
-    return output.strip()
-
-def list_images(params: dict) -> tuple[str, str]:
+def list_images(params: dict) -> tuple[list, str]:
     client = get_docker_client()
-    if not client: return "", "Error: Tidak dapat terhubung ke Docker daemon."
+    if not client: return None, "Error: Tidak dapat terhubung ke Docker daemon."
     try:
         images = client.images.list()
-        return format_image_list(images), ""
+        image_list = []
+        for img in images:
+            repo_tags = img.tags
+            if not repo_tags:
+                repo = "<none>"
+                tag = "<none>"
+            else:
+                parts = repo_tags[0].rsplit(':', 1)
+                repo = parts[0]
+                tag = parts[1] if len(parts) > 1 else "<none>"
+
+            image_list.append({
+                "id": img.short_id[7:19],
+                "repository": repo,
+                "tag": tag,
+                "created": img.attrs['Created'][:19].replace('T', ' '),
+                "size": round(img.attrs['Size'] / (1024 * 1024), 2)
+            })
+        return image_list, ""
     except docker.errors.APIError as e:
-        return "", f"Error Docker API: {e.explanation or str(e)}"
-    except Exception as e: return "", f"Error tak terduga: {str(e)}"
+        return None, f"Error Docker API: {e.explanation or str(e)}"
+    except Exception as e: return None, f"Error tak terduga: {str(e)}"
 
 def _run_compose_command(command: list) -> tuple[str, str]:
     compose_file_path = os.path.join(current_app.root_path, '..', 'docker-compose.yml')

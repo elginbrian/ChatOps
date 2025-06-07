@@ -281,6 +281,51 @@
         return article;
       }
 
+      function createImageTableElement(images) {
+        const article = createBaseMessageElement("self-start w-full");
+        const wrapper = document.createElement("div");
+        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
+        const tableContainer = document.createElement("div");
+        tableContainer.className = "overflow-x-auto";
+        const table = document.createElement("table");
+        table.className = "w-full text-left text-sm";
+
+        table.innerHTML = `
+          <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs">
+            <tr>
+              <th class="p-3">Repository</th>
+              <th class="p-3">Tag</th>
+              <th class="p-3 hidden sm:table-cell">Image ID</th>
+              <th class="p-3 hidden md:table-cell">Created</th>
+              <th class="p-3 text-right">Size (MB)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--border-color)]"></tbody>
+        `;
+        const tbody = table.querySelector("tbody");
+
+        if (!images || images.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Tidak ada image.</td></tr>`;
+        } else {
+          images.forEach(i => {
+            const tr = document.createElement("tr");
+            tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
+            tr.innerHTML = `
+              <td class="p-3 align-middle font-medium text-gray-200">${i.repository}</td>
+              <td class="p-3 align-middle text-gray-400">${i.tag}</td>
+              <td class="p-3 align-middle text-gray-500 font-mono hidden sm:table-cell">${i.id}</td>
+              <td class="p-3 align-middle text-gray-400 hidden md:table-cell">${i.created}</td>
+              <td class="p-3 align-middle text-gray-300 text-right">${i.size}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+        tableContainer.appendChild(table);
+        wrapper.appendChild(tableContainer);
+        article.append(createIcon("logo-docker", "bg-blue-800 text-white"), wrapper);
+        return article;
+      }
+
       function createTypingIndicator() {
         const article = createBaseMessageElement();
         article.id = "typingIndicator";
@@ -291,7 +336,27 @@
         return article;
       }
 
-      function createBotResponse(data) { if (data.output_type === "table") { return createTableElement(data.output); } if (data.output) { return createBotMessageElement(data.output, "bot-output"); } return null; }
+      function createBotResponse(data) {
+        if (data.output_type === "table") {
+            if (data.output && data.output.length > 0) {
+                if (data.output[0].hasOwnProperty('status')) {
+                    return createTableElement(data.output);
+                }
+                if (data.output[0].hasOwnProperty('repository')) {
+                    return createImageTableElement(data.output);
+                }
+            }
+            if (data.received_command && data.received_command.includes("image")) {
+                 return createImageTableElement([]);
+            }
+            return createTableElement([]);
+        }
+        if (data.output) {
+            return createBotMessageElement(data.output, "bot-output");
+        }
+        return null;
+      }
+
       function appendToFeed(element) { if (!element) return; chatFeed.appendChild(element); setTimeout(() => { chatFeed.scrollTop = chatFeed.scrollHeight; }, 50); }
       function setLoadingState(isLoading) { sendIcon.classList.toggle("hidden", isLoading); loadingIndicator.classList.toggle("hidden", !isLoading); sendButton.disabled = isLoading; commandInput.disabled = isLoading; if (!isLoading) commandInput.focus(); }
       async function submitCommand(commandText) { if (!commandText) return; appendToFeed(createUserMessageElement(commandText)); commandInput.value = ""; const typingIndicator = createTypingIndicator(); appendToFeed(typingIndicator); setLoadingState(true); try { const response = await fetch("/api/command", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ command: commandText }), }); const data = await response.json(); typingIndicator.remove(); if (!response.ok) { appendToFeed(createBotMessageElement(data.error || `Server Error: ${response.status}`, "bot-error")); } else { const botResponse = createBotResponse(data); if(botResponse) appendToFeed(botResponse); if (data.error) appendToFeed(createBotMessageElement(data.error, "bot-error")); } } catch (error) { typingIndicator.remove(); console.error("Fetch error:", error); appendToFeed(createBotMessageElement(`Kesalahan Jaringan: ${error.message}.`, "bot-error")); } finally { setLoadingState(false); } }
