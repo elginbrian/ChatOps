@@ -20,14 +20,16 @@ COMMAND_GUIDE = [
         "pattern": r"^(?:jalankan|nyalakan|start|buat|run)\s+(?:(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+)\s+(?:dari\s+image\s+)?(?P<image>[a-zA-Z0-9/:_.-]+)(?:\s+dengan\s+port(?:s)?\s+(?P<ports>\d{1,5}:\d{1,5}(?:,\d{1,5}:\d{1,5})*))?$",
         "action": "run_container",
         "description": "Menjalankan kontainer baru (Format: run NAMA dari IMAGE).",
-        "example": "run webku nginx:latest"
+        "example": "run webku nginx:latest",
+        "required_params": ["name", "image"]
     },
     {
         "id": "run_container_image_first",
         "pattern": r"^(?:jalankan|nyalakan|start|buat|run)\s+(?:dari\s+)?image\s+(?P<image>[a-zA-Z0-9/:_.-]+)\s+(?:sebagai|as)\s+(?:(?:kontainer|container)\s+)?(?P<name>[a-zA-Z0-9_.-]+)(?:\s+dengan\s+port(?:s)?\s+(?P<ports>\d{1,5}:\d{1,5}(?:,\d{1,5}:\d{1,5})*))?$",
         "action": "run_container",
         "description": "Menjalankan kontainer baru (Format: run image IMAGE as NAMA).",
-        "example": "run image nginx:latest as webku"
+        "example": "run image nginx:latest as webku",
+        "required_params": ["image", "name"]
     },
     {
         "id": "start_container_verb_first",
@@ -76,14 +78,16 @@ COMMAND_GUIDE = [
         "pattern": r"^(?:(?:lihat|tampilkan)\s+log(?:s)?|docker\s+logs)\s+(?:(?:dari\s+)?(?:kontainer|container|layanan|servis)\s+)?(?P<name>[a-zA-Z0-9_.-]+)(?:\s+sebanyak\s+(?P<lines>\d+)\s+baris)?$",
         "action": "view_logs",
         "description": "Melihat log kontainer (Format: lihat log NAMA).",
-        "example": "lihat log webku"
+        "example": "lihat log webku",
+        "required_params": ["name"]
     },
     {
         "id": "view_logs_noun_first",
         "pattern": r"^(?:lihat|tampilkan)\s+(?:kontainer|container|layanan|servis)\s+(?P<name>[a-zA-Z0-9_.-]+)\s+log(?:s)?(?:\s+sebanyak\s+(?P<lines>\d+)\s+baris)?$",
         "action": "view_logs",
         "description": "Melihat log kontainer (Format: lihat container NAMA log).",
-        "example": "lihat container webku log"
+        "example": "lihat container webku log",
+        "required_params": ["name"]
     },
     {
         "id": "view_stats_verb_first",
@@ -118,7 +122,8 @@ COMMAND_GUIDE = [
         "pattern": r"^compose-?up(?:\s+(?P<service>[a-zA-Z0-9_.-]+))?$",
         "action": "compose_up",
         "description": "Menjalankan 'docker-compose up -d'.",
-        "example": "compose-up my_service"
+        "example": "compose-up my_service",
+        "required_params": []
     },
     {
         "id": "compose_down",
@@ -191,13 +196,6 @@ COMMAND_GUIDE = [
         "example": "docker version"
     },
     {
-        "id": "system_prune",
-        "pattern": r"^(?:sistem\s+bersihkan|system\s+prune)$",
-        "action": "prune_system",
-        "description": "Membersihkan kontainer, image, volume, dan network yang tidak terpakai.",
-        "example": "system prune"
-    },
-    {
         "id": "pause_container",
         "pattern": r"^(?:pause|jeda)\s+(?:(?:kontainer|container)\s+)?(?P<name>[a-zA-Z0-9_.-]+)$",
         "action": "pause_container",
@@ -230,7 +228,8 @@ COMMAND_GUIDE = [
         "pattern": r"^compose-?logs(?:\s+(?P<service>[a-zA-Z0-9_.-]+))?(?:\s+sebanyak\s+(?P<lines>\d+)\s+baris)?$",
         "action": "compose_logs",
         "description": "Menampilkan log dari service docker-compose.",
-        "example": "compose-logs web_service sebanyak 100 baris"
+        "example": "compose-logs web_service sebanyak 100 baris",
+        "required_params": []
     },
     {
         "id": "exec_in_container",
@@ -258,13 +257,15 @@ COMMAND_GUIDE = [
         "pattern": r"^compose-?restart(?:\s+(?P<service>[a-zA-Z0-9_.-]+))?$",
         "action": "compose_restart",
         "description": "Me-restart service dari docker-compose.",
-        "example": "compose-restart web_service"
+        "example": "compose-restart web_service",
+        "required_params": []
     },
     {
         "id": "compose_build",
         "pattern": r"^compose-?build(?:\s+(?P<service>[a-zA-Z0-9_.-]+))?$",
         "action": "compose_build",
         "description": "Membangun (build) image untuk service docker-compose.",
-        "example": "compose-build"
+        "example": "compose-build",
+        "required_params": []
     }
 ]

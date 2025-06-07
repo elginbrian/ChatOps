@@ -16,6 +16,8 @@ def _create_dynamic_tools_from_guide():
         
         params = param_pattern.findall(cmd_def["pattern"])
         
+        required_params = cmd_def.get("required_params", params)
+
         properties = {}
         for param in params:
             properties[param] = {"type": "string", "description": f"Parameter untuk {param}"}
@@ -26,7 +28,7 @@ def _create_dynamic_tools_from_guide():
             parameters={
                 "type": "object",
                 "properties": properties,
-                "required": params,
+                "required": required_params,
             }
         )
         function_declarations.append(func)
