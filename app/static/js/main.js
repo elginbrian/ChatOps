@@ -157,7 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const table = createTableElement(headers, rows, "Tidak ada data untuk ditampilkan.");
     const messageElement = createBaseMessageElement("self-start w-full");
-    // Gunakan ikon Gemini untuk tabel yang ia buat
     configureIcon(messageElement, "sparkles-outline", "bg-indigo-800 text-white");
     messageElement.querySelector(".message-content").appendChild(table);
     return messageElement;
@@ -439,7 +438,14 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadConversationMessages(convId) {
     chatFeed.innerHTML = "";
     try {
-      const response = await fetch(`/api/conversation/${convId}`);
+      const response = await fetch(`/conversation/${convId}`);
+
+      if (response.status === 401) {
+        showToast("Sesi Anda telah berakhir. Harap login kembali.", true);
+        window.location.reload();
+        return;
+      }
+
       if (!response.ok) throw new Error("Gagal memuat percakapan.");
       const messages = await response.json();
 
@@ -479,7 +485,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!confirm("Anda yakin ingin menghapus percakapan ini?")) return;
 
     try {
-      const response = await fetch(`/api/conversation/${convId}`, { method: "DELETE" });
+      const response = await fetch(`/conversation/${convId}`, { method: "DELETE" });
+
+      if (response.status === 401) {
+        showToast("Sesi Anda telah berakhir. Harap login kembali.", true);
+        window.location.reload();
+        return;
+      }
+
       if (!response.ok) throw new Error("Gagal menghapus percakapan.");
 
       conversations = conversations.filter((c) => c.id !== convId);
@@ -515,13 +528,20 @@ document.addEventListener("DOMContentLoaded", () => {
         conversation_id: activeConversationId,
       };
 
-      const response = await fetch("/api/command", {
+      const response = await fetch("/command", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(payload),
       });
 
       removeIndicator();
+
+      if (response.status === 401) {
+        showToast("Sesi Anda telah berakhir. Harap login kembali.", true);
+        window.location.reload();
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -538,7 +558,9 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       removeIndicator();
       console.error("Fetch error:", error);
-      appendToFeed(createBotTextMessage(error.message, "bot-error"));
+      if (error.name !== "SyntaxError") {
+        appendToFeed(createBotTextMessage(error.message, "bot-error"));
+      }
     } finally {
       setLoadingState(false);
     }
@@ -546,7 +568,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function init() {
     try {
-      const response = await fetch("/api/conversations");
+      const response = await fetch("/conversations");
+
+      if (response.status === 401) {
+        window.location.reload();
+        return;
+      }
+
       if (!response.ok) throw new Error("Gagal mengambil daftar percakapan.");
       conversations = await response.json();
 

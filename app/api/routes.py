@@ -11,6 +11,9 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'logged_in' not in session:
+            if request.path.startswith('/conversation') or request.path.startswith('/command'):
+                 return jsonify({"error": "Sesi berakhir. Silakan login kembali.", "session_expired": True}), 401
+
             return redirect(url_for('api.login'))
         return f(*args, **kwargs)
     return decorated_function
