@@ -3,9 +3,9 @@ from flask import current_app
 from app.models.commands import COMMAND_GUIDE
 import json
 
-docker_tool = genai.Tool(
+docker_tool = genai.types.Tool(
     function_declarations=[
-        genai.FunctionDeclaration(
+        genai.types.FunctionDeclaration(
             name="execute_docker_command",
             description="Executes a command to interact with the Docker environment, such as listing containers, viewing logs, or inspecting images. Use this to get real-time information about the system.",
             parameters={
@@ -72,7 +72,7 @@ def handle_gemini_request(user_prompt: str, history: list):
             tool_response = parse_and_execute_command(command_to_run, is_gemini_call=True)
             
             final_response = chat.send_message(
-                genai.Part.from_function_response(
+                genai.types.Part.from_function_response(
                     name="execute_docker_command",
                     response={"result": tool_response}
                 )
