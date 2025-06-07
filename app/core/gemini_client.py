@@ -1,6 +1,7 @@
 import google.generativeai as genai
 from flask import current_app
 from app.models.commands import COMMAND_GUIDE
+from google.generativeai.protos import Part, FunctionResponse
 import json
 import re
 
@@ -69,33 +70,17 @@ def handle_gemini_request(user_prompt: str, history: list):
     genai.configure(api_key=api_key)
 
     system_prompt = f"""
-    You are a helpful and intelligent Docker assistant integrated into a ChatOps application.
-    Your primary role is to assist users in managing their Docker environment through conversation.
-    You have two main capabilities:
-    1.  **General Conversation**: You can only answer questions related to Docker, DevOps, and Cloud Infrastructure.
-    2.  **Docker Interaction**: You have a set of special tools to get real-time information from the Docker environment. When a user asks a question that requires knowledge of the current state of Docker (e.g., "is my database container running?", "why did my webserver crash?", "show me the nginx image details"), you MUST use one of your available tools.
+    You are a helpful and intelligent Docker assistant. Your primary role is to assist users in managing their Docker environment.
+    When a user asks a question that requires real-time information (e.g., "is my database container running?", "show me the details of nginx and redis containers"), you MUST use your available tools.
+    You can call multiple tools in parallel in a single turn.
     
-    Here is a summary of available tools:
-    {_get_command_summary()}
-
-    Analyze the user's prompt and decide whether to answer directly or to use one of the available functions.
     IMPORTANT: If the user asks for "help", "bantuan", or "command list", you MUST NOT list the commands yourself. Instead, reply with the text: "Tentu, Anda dapat melihat semua daftar perintah yang tersedia dengan menekan tombol 'Panduan Perintah' di sidebar."
     """
-
-    safety_settings = {
-        "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
-        "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
-        "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE",
-        "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
-    }
-    
-    docker_tool = _create_dynamic_tools_from_guide()
 
     model = genai.GenerativeModel(
         model_name="gemini-1.5-flash",
         system_instruction=system_prompt,
-        tools=[docker_tool],
-        safety_settings=safety_settings
+        tools=[_create_dynamic_tools_from_guide()]
     )
     
     gemini_history = []
@@ -108,70 +93,52 @@ def handle_gemini_request(user_prompt: str, history: list):
     
     try:
         response = chat.send_message(user_prompt)
-        current_app.logger.info(f"Gemini Raw Response: {response}")
+        
+        while response.candidates[0].content.parts[0].function_call:
+            function_calls = response.candidates[0].content.parts
+            tool_responses = []
 
-        if not response.candidates:
-            feedback = response.prompt_feedback
-            error_message = f"Gemini request was blocked. Reason: {feedback.block_reason}."
-            current_app.logger.error(error_message)
-            return {"output": None, "error": error_message, "output_type": "text"}
-
-        part = response.candidates[0].content.parts[0]
-
-        if hasattr(part, 'function_call') and part.function_call:
-            function_call = part.function_call
-            command_id = function_call.name
-            params = dict(function_call.args)
-            
-            current_app.logger.info(f"Gemini calling function '{command_id}' with params: {params}")
-
-            cmd_def = next((cmd for cmd in COMMAND_GUIDE if cmd["id"] == command_id), None)
-            
-            if not cmd_def:
-                return {"output": None, "error": f"Error: Gemini mencoba memanggil fungsi tidak dikenal: '{command_id}'", "output_type": "text"}
-
-            action = cmd_def["action"]
-            
-            if action == "inspect_object":
-                object_type = params.get("object_type")
-                resolved_action = INSPECT_ACTION_MAP.get(object_type)
-                if not resolved_action:
-                    return {"output": None, "error": f"Error: Tipe objek '{object_type}' tidak dikenal untuk inspect.", "output_type": "text"}
-                action = resolved_action
-
-            if action in ACTION_HANDLERS:
-                if "params_map" in cmd_def:
-                    params.update(cmd_def["params_map"])
+            for call in function_calls:
+                function_call = call.function_call
+                command_id = function_call.name
+                params = dict(function_call.args)
                 
-                output_data, error_str = ACTION_HANDLERS[action](params)
+                current_app.logger.info(f"Gemini calling function '{command_id}' with params: {params}")
 
-                output_type = "text"
-                if action in ["list_containers", "list_images", "view_stats", "view_logs", "list_volumes", "list_networks"]:
-                    output_type = "table"
-                elif "inspect" in action:
-                    output_type = "inspect"
+                cmd_def = next((cmd for cmd in COMMAND_GUIDE if cmd["id"] == command_id), None)
+                
+                if not cmd_def:
+                    func_response = FunctionResponse(name=command_id, response={"status": "error", "message": f"Fungsi '{command_id}' tidak ditemukan."})
+                    tool_responses.append(Part(function_response=func_response))
+                    continue
+
+                action = cmd_def.get("action")
+                if action == "inspect_object":
+                    object_type = params.get("object_type")
+                    action = INSPECT_ACTION_MAP.get(object_type)
+                
+                if action in ACTION_HANDLERS:
+                    if "params_map" in cmd_def:
+                        params.update(cmd_def["params_map"])
+                    
+                    output_data, error_str = ACTION_HANDLERS[action](params)
+                    
+                    func_response = FunctionResponse(name=command_id, response={"data": output_data, "error": error_str})
+                    tool_responses.append(Part(function_response=func_response))
                 else:
-                    output_type = "action_receipt"
-
-                tool_response = {"output": output_data, "error": error_str, "output_type": output_type}
+                    func_response = FunctionResponse(name=command_id, response={"status": "error", "message": f"Aksi untuk '{command_id}' tidak terdefinisi."})
+                    tool_responses.append(Part(function_response=func_response))
                 
-                final_response = chat.send_message(
-                    genai.types.Part.from_function_response(
-                        name=command_id,
-                        response={"result": tool_response}
-                    )
-                )
-                final_text = final_response.candidates[0].content.parts[0].text
-                return {"output": final_text, "error": None, "output_type": "gemini_text"}
-            else:
-                 return {"output": None, "error": f"Error: Aksi '{action}' belum terdefinisi di backend.", "output_type": "text"}
+
+            response = chat.send_message(tool_responses)
         
-        elif hasattr(part, 'text') and part.text:
-            return {"output": part.text, "error": None, "output_type": "gemini_text"}
-        
-        else:
-            return {"output": None, "error": "Gemini returned an empty or unexpected response.", "output_type": "text"}
+        final_text = response.candidates[0].content.parts[0].text
+        return {"output": final_text, "error": None, "output_type": "gemini_text"}
 
     except Exception as e:
         current_app.logger.error(f"An unexpected error occurred with Gemini API: {e}", exc_info=True)
-        return {"output": None, "error": f"An unexpected error occurred with the Gemini API. Check logs for details.", "output_type": "text"}
+        try:
+            current_app.logger.error(f"Last Gemini Response before error: {response}")
+        except NameError:
+            pass
+        return {"output": None, "error": f"An unexpected error occurred with the Gemini API. Check server logs for details.", "output_type": "text"}
