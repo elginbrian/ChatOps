@@ -1,10 +1,8 @@
 import google.generativeai as genai
 from flask import current_app
-from app.api.handlers import parse_and_execute_command
 from app.models.commands import COMMAND_GUIDE
 import json
 
-# Definisi tool untuk Gemini agar ia tahu bisa mengeksekusi perintah Docker
 docker_tool = genai.Tool(
     function_declarations=[
         genai.FunctionDeclaration(
@@ -25,13 +23,11 @@ docker_tool = genai.Tool(
 )
 
 def _get_command_summary():
-    """Membuat ringkasan perintah untuk konteks prompt Gemini."""
     return "\n".join([f"- `{cmd['example']}`: {cmd['description']}" for cmd in COMMAND_GUIDE])
 
 def handle_gemini_request(user_prompt: str, history: list):
-    """
-    Mengirim prompt ke Gemini, menangani function calling jika diperlukan.
-    """
+    from app.api.handlers import parse_and_execute_command
+
     api_key = current_app.config.get('GEMINI_API_KEY')
     if not api_key:
         return {"output": None, "error": "Error: GEMINI_API_KEY tidak diatur di server.", "output_type": "text"}
