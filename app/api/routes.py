@@ -16,15 +16,9 @@ def handle_command_route():
 
         result = parse_and_execute_command(user_command_str)
 
-        response_data = {
-            'output': result.get('output'),
-            'error': result.get('error'),
-            'output_type': result.get('output_type', 'text'),
-            'received_command': user_command_str
-        }
-        return jsonify(response_data)
+        return jsonify(result)
 
     except Exception as e:
         current_app.logger.exception(f"Error internal server saat memproses /api/command dari {request.remote_addr}:")
-        internal_error_msg = "Terjadi kesalahan internal pada server." if not current_app.config['DEBUG_MODE'] else str(e)
+        internal_error_msg = "Terjadi kesalahan internal pada server." if not current_app.config['DEBUG_MODE'] else str(e) #
         return jsonify({'error': internal_error_msg, 'output': ''}), 500
