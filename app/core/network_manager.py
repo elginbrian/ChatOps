@@ -14,13 +14,14 @@ def list_networks(params: dict) -> tuple[list, str]:
             network_list.append({
                 "id": net.short_id,
                 "name": net.name,
-                "driver": net.driver,
+                "driver": net.attrs.get('Driver', 'n/a'), 
                 "scope": net.attrs.get('Scope', 'local'),
             })
         return network_list, ""
     except docker.errors.APIError as e:
         return None, f"Error Docker API: {e.explanation or str(e)}"
     except Exception as e:
+        current_app.logger.exception("Error di list_networks:")
         return None, f"Error tak terduga: {str(e)}"
 
 def inspect_network(params: dict) -> tuple[str, str]:

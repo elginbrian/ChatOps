@@ -5,91 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ChatOps - Docker Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <style>
-      :root {
-        --bg-primary: #111111;
-        --bg-secondary: #181818;
-        --bg-tertiary: #222222;
-        --border-color: #2b2b2b;
-        --text-primary: #e5e7eb;
-        --text-secondary: #9ca3af;
-        --accent-primary: #ffffff;
-        --accent-hover: #f3f4f6;
-        --error-color: #fca5a5;
-      }
-      body {
-        font-family: "Inter", sans-serif;
-        background-color: var(--bg-primary);
-        color: var(--text-primary);
-      }
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: var(--bg-secondary);
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #333;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #444;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(5px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .animate-fadeIn {
-        animation: fadeIn 0.3s ease-out forwards;
-      }
-      @keyframes dot-pulse {
-        0%,
-        100% {
-          transform: scale(0.8);
-          opacity: 0.5;
-        }
-        50% {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-      .typing-dot {
-        animation: dot-pulse 1.5s infinite ease-in-out;
-      }
-      .typing-dot:nth-child(2) {
-        animation-delay: 0.2s;
-      }
-      .typing-dot:nth-child(3) {
-        animation-delay: 0.4s;
-      }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   </head>
   <body class="flex flex-col justify-center items-center min-h-screen sm:p-4 selection:bg-gray-700 selection:text-white">
     <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
 
     <main class="w-full h-screen sm:h-[90vh] max-w-5xl bg-[var(--bg-secondary)] shadow-2xl shadow-black/50 sm:rounded-2xl flex flex-col overflow-hidden border border-[var(--border-color)]">
-      <header class="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0 backdrop-blur-sm bg-[var(--bg-secondary)]/80 z-10">
+      <header class="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0">
         <div class="flex items-center gap-3">
           <ion-icon name="terminal-outline" class="text-2xl text-[var(--text-secondary)]"></ion-icon>
           <h1 class="text-lg font-bold text-[var(--text-primary)] tracking-wide">ChatOps</h1>
         </div>
-        <button id="toggleGuideButton" class="text-sm text-[var(--text-secondary)] hover:text-white focus:outline-none flex items-center p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200">
+        <button id="toggleGuideButton" class="text-sm text-[var(--text-secondary)] hover:text-white focus:outline-none flex items-center p-2 rounded-lg hover:bg-[var(--bg-tertiary)]">
           <ion-icon name="help-circle-outline" class="text-xl mr-1.5"></ion-icon>
           <span class="hidden sm:inline">Panduan</span>
         </button>
       </header>
 
-      <div id="commandGuideModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+      <div id="commandGuideModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-[var(--bg-secondary)] p-6 rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto border border-[var(--border-color)] animate-fadeIn">
           <div class="flex justify-between items-center mb-5">
             <h2 class="text-2xl font-semibold text-white">Panduan Perintah</h2>
@@ -102,21 +36,16 @@
       <section id="chatFeed" aria-live="polite" class="flex-grow p-4 md:p-6 space-y-6 overflow-y-auto flex flex-col"></section>
 
       <section aria-labelledby="command-input-heading" class="p-3 md:p-4 border-t border-[var(--border-color)] bg-[var(--bg-secondary)]/90 shrink-0">
-        <h2 id="command-input-heading" class="sr-only">Command Input</h2>
         <form id="commandForm" class="flex items-center gap-3">
           <input
             type="text"
             id="commandInput"
             name="command"
-            class="flex-grow bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] px-4 py-3 rounded-lg focus:ring-2 focus:ring-white/80 focus:border-transparent focus:outline-none transition-all shadow-sm text-base"
+            class="flex-grow bg-[var(--bg-tertiary)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-secondary)] px-4 py-3 rounded-lg focus:ring-2 focus:ring-white/80 focus:border-transparent focus:outline-none"
             placeholder="Ketik perintah di sini..."
             autocomplete="off"
           />
-          <button
-            type="submit"
-            id="sendButton"
-            class="bg-white hover:bg-gray-200 text-black font-semibold p-2.5 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-secondary)] focus:ring-white flex items-center justify-center h-[50px] w-[50px] disabled:bg-gray-600 disabled:cursor-not-allowed disabled:scale-100"
-          >
+          <button type="submit" id="sendButton" class="bg-white hover:bg-gray-200 text-black font-semibold p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center h-[50px] w-[50px] disabled:bg-gray-600">
             <div id="loadingIndicator" class="hidden animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black"></div>
             <ion-icon name="arrow-up-outline" id="sendIcon" class="text-2xl"></ion-icon>
           </button>
@@ -124,533 +53,68 @@
       </section>
     </main>
 
-    <script>
-      const commandForm = document.getElementById("commandForm");
-      const commandInput = document.getElementById("commandInput");
-      const sendButton = document.getElementById("sendButton");
-      const sendIcon = document.getElementById("sendIcon");
-      const loadingIndicator = document.getElementById("loadingIndicator");
-      const chatFeed = document.getElementById("chatFeed");
-      const toggleGuideButton = document.getElementById("toggleGuideButton");
-      const commandGuideModal = document.getElementById("commandGuideModal");
-      const closeGuideButton = document.getElementById("closeGuideButton");
-      const commandGuideContent = document.getElementById("commandGuideContent");
-      const rawCommandGuide = {{ command_guide | tojson | safe }};
+    <template id="base-message-template">
+      <article class="chat-message flex items-start gap-3.5 max-w-full animate-fadeIn">
+        <div class="icon-container flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5">
+          <ion-icon class="icon text-lg"></ion-icon>
+        </div>
+        <div class="message-content w-full"></div>
+      </article>
+    </template>
 
-      function showToast(message, isError = false) {
-        const container = document.getElementById("toast-container");
-        const toast = document.createElement("div");
-        const bgColor = isError ? "bg-red-800" : "bg-gray-200";
-        const textColor = isError ? "text-white" : "text-black";
-        toast.className = `animate-fadeIn ${bgColor} ${textColor} text-sm font-medium px-4 py-2 rounded-lg shadow-lg`;
-        toast.textContent = message;
-        container.appendChild(toast);
-        setTimeout(() => { toast.remove(); }, 3000);
-      }
+    <template id="table-template">
+      <div class="bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs"></thead>
+            <tbody class="divide-y divide-[var(--border-color)]"></tbody>
+          </table>
+        </div>
+      </div>
+    </template>
 
-      function copyToClipboard(text, type = 'Teks') {
-        navigator.clipboard.writeText(text).then(() => {
-          showToast(`${type} disalin: "${text}"`);
-        }).catch(err => {
-          console.error("Gagal menyalin:", err);
-          showToast("Gagal menyalin.", true);
-        });
-      }
-
-      function createBaseMessageElement(extraClasses = "") {
-        const article = document.createElement("article");
-        article.className = `chat-message flex items-start gap-3.5 max-w-full animate-fadeIn ${extraClasses}`;
-        return article;
-      }
-
-      function createIcon(iconName, colorClasses) {
-        const iconContainer = document.createElement("div");
-        iconContainer.className = `flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 ${colorClasses}`;
-        const icon = document.createElement("ion-icon");
-        icon.className = "text-lg";
-        icon.setAttribute("name", iconName);
-        iconContainer.appendChild(icon);
-        return iconContainer;
-      }
-
-      function createUserMessageElement(text) {
-        const article = createBaseMessageElement("self-end flex-row-reverse");
-        const content = document.createElement("div");
-        content.className = "bg-white text-black p-3 rounded-t-xl rounded-l-xl";
-        content.textContent = text;
-        article.append(content, createIcon("person-circle-outline", "bg-gray-700 text-white"));
-        return article;
-      }
-
-      function createBotMessageElement(text, type) {
-        const article = createBaseMessageElement("self-start");
-        let content, icon;
-
-        switch (type) {
-          case "bot-error":
-            content = document.createElement("div");
-            content.className = "bg-[var(--bg-tertiary)] text-red-400 p-3 rounded-t-xl rounded-r-xl font-mono text-sm";
-            content.textContent = text;
-            icon = createIcon("warning-outline", "bg-red-900/80 text-white");
-            break;
-          case "system-info":
-            content = document.createElement("div");
-            content.className = "bg-[var(--bg-tertiary)] text-gray-400 p-3 rounded-t-xl rounded-r-xl italic text-sm";
-            content.textContent = text;
-            icon = createIcon("information-circle-outline", "bg-gray-700 text-gray-200");
-            break;
-          case "bot-output":
-          default:
-            content = document.createElement("div");
-            content.className = "bg-[var(--bg-tertiary)] text-gray-300 p-3 rounded-t-xl rounded-r-xl";
-            const pre = document.createElement("pre");
-            pre.className = "whitespace-pre-wrap word-wrap break-word font-mono text-sm";
-            pre.textContent = text;
-            content.appendChild(pre);
-            icon = createIcon("logo-docker", "bg-blue-800 text-white");
-            break;
-        }
-        article.append(icon, content);
-        return article;
-      }
-
-      function createInspectOutputElement(jsonDataString, objectName) {
-        const article = createBaseMessageElement("self-start w-full");
-        const wrapper = document.createElement("div");
-        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
-
-        const header = document.createElement("div");
-        header.className = "p-3 bg-[var(--bg-secondary)] flex justify-between items-center";
-        header.innerHTML = `
-            <p class="text-gray-300 font-semibold">Inspect: <code class="text-gray-200">${objectName}</code></p>
-            <button class="text-gray-400 hover:text-white" onclick="copyToClipboard(this.nextElementSibling.textContent, 'JSON')">
-                <ion-icon name="copy-outline"></ion-icon>
+    <template id="container-table-row-template">
+      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
+        <td class="p-3 align-middle"><span class="status-indicator w-2.5 h-2.5 rounded-full inline-block"></span></td>
+        <td class="p-3 align-middle font-medium text-gray-200">
+          <div class="flex items-center gap-2">
+            <span class="container-name"></span>
+            <ion-icon name="copy-outline" class="copy-button cursor-pointer text-gray-500 hover:text-white"></ion-icon>
+          </div>
+          <div class="container-id text-xs text-gray-500 font-mono"></div>
+        </td>
+        <td class="container-image p-3 align-middle text-gray-400 hidden md:table-cell"></td>
+        <td class="container-ports p-3 align-middle text-gray-400 font-mono hidden lg:table-cell"></td>
+        <td class="p-3 align-middle">
+          <div class="flex items-center justify-end gap-2">
+            <button title="Inspect Container" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
+              <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
             </button>
-        `;
+            <button title="View Logs" class="logs-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white disabled:opacity-50">
+              <ion-icon name="document-text-outline" class="text-lg"></ion-icon>
+            </button>
+            <button title="Stop Container" class="stop-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-yellow-700/50 text-gray-300 hover:text-white disabled:opacity-50">
+              <ion-icon name="stop-circle-outline" class="text-lg"></ion-icon>
+            </button>
+          </div>
+        </td>
+      </tr>
+    </template>
 
-        const pre = document.createElement("pre");
-        pre.className = "p-4 overflow-x-auto text-xs text-gray-300 bg-[var(--bg-tertiary)] max-h-[50vh]";
-        pre.textContent = jsonDataString;
+    <template id="action-receipt-template">
+      <div class="wrapper bg-[var(--bg-tertiary)] rounded-r-xl rounded-b-xl p-4 min-w-[300px] border-l-4">
+        <p class="status-text text-lg font-bold text-white mb-2"></p>
+        <p class="resource-text text-sm text-gray-300"><span class="resource-type"></span>: <code class="font-semibold text-gray-200 resource-name"></code></p>
+        <div class="details-list mt-3 pt-3 border-t border-[var(--border-color)] space-y-1"></div>
+      </div>
+    </template>
 
-        wrapper.append(header, pre);
-        article.append(createIcon("code-slash-outline", "bg-purple-800 text-white"), wrapper);
-        return article;
-      }
-
-      function createTableElement(containers) {
-        // ... (fungsi ini tetap sama) ...
-        const article = createBaseMessageElement("self-start w-full");
-        const wrapper = document.createElement("div");
-        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
-        const tableContainer = document.createElement("div");
-        tableContainer.className = "overflow-x-auto";
-        const table = document.createElement("table");
-        table.className = "w-full text-left text-sm";
-
-        table.innerHTML = `
-          <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs">
-            <tr>
-              <th class="p-3">Status</th>
-              <th class="p-3">Name</th>
-              <th class="p-3 hidden md:table-cell">Image</th>
-              <th class="p-3 hidden lg:table-cell">Ports</th>
-              <th class="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--border-color)]"></tbody>
-        `;
-        const tbody = table.querySelector("tbody");
-
-        if (!containers || containers.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Tidak ada kontainer.</td></tr>`;
-        } else {
-          containers.forEach(c => {
-            const tr = document.createElement("tr");
-            tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
-            const isRunning = c.status.toLowerCase().startsWith("up") || c.status.toLowerCase().startsWith("running");
-            const statusColor = isRunning ? "bg-green-500" : "bg-gray-500";
-            const canInteract = isRunning && !c.is_self;
-
-            tr.innerHTML = `
-              <td class="p-3 align-middle"><span class="w-2.5 h-2.5 ${statusColor} rounded-full inline-block" title="${c.status}"></span></td>
-              <td class="p-3 align-middle font-medium text-gray-200">
-                <div class="flex items-center gap-2">
-                  <span>${c.name}${c.is_self ? " (Ini)" : ""}</span>
-                  <ion-icon name="copy-outline" class="cursor-pointer text-gray-500 hover:text-white" onclick="copyToClipboard('${c.name}', 'Nama')"></ion-icon>
-                </div>
-                <div class="text-xs text-gray-500 font-mono">${c.id}</div>
-              </td>
-              <td class="p-3 align-middle text-gray-400 hidden md:table-cell">${c.image}</td>
-              <td class="p-3 align-middle text-gray-400 font-mono hidden lg:table-cell">${c.ports || "-"}</td>
-              <td class="p-3 align-middle">
-                <div class="flex items-center justify-end gap-2">
-                  <button onclick="handleQuickAction('inspect container', '${c.name}')" title="Inspect Container" class="p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                    <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
-                  </button>
-                  <button onclick="handleQuickAction('lihat log', '${c.name}')" title="View Logs" class="p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors" ${!canInteract ? "disabled" : ""}>
-                    <ion-icon name="document-text-outline" class="text-lg"></ion-icon>
-                  </button>
-                  <button onclick="handleQuickAction('stop', '${c.name}')" title="Stop Container" class="p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-yellow-700/50 text-gray-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors" ${!canInteract ? "disabled" : ""}>
-                    <ion-icon name="stop-circle-outline" class="text-lg"></ion-icon>
-                  </button>
-                </div>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-        tableContainer.appendChild(table);
-        wrapper.appendChild(tableContainer);
-        article.append(createIcon("logo-docker", "bg-blue-800 text-white"), wrapper);
-        return article;
-      }
-
-      function createVolumeTableElement(volumes) {
-          const article = createBaseMessageElement("self-start w-full");
-          const wrapper = document.createElement("div");
-          wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
-          const tableContainer = document.createElement("div");
-          tableContainer.className = "overflow-x-auto";
-          const table = document.createElement("table");
-          table.className = "w-full text-left text-sm";
-          table.innerHTML = `
-              <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs">
-                  <tr>
-                      <th class="p-3">Volume Name</th>
-                      <th class="p-3 hidden sm:table-cell">Driver</th>
-                      <th class="p-3 hidden md:table-cell">Created</th>
-                      <th class="p-3 text-right">Actions</th>
-                  </tr>
-              </thead>
-              <tbody class="divide-y divide-[var(--border-color)]"></tbody>
-          `;
-          const tbody = table.querySelector("tbody");
-          if (!volumes || volumes.length === 0) {
-              tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">Tidak ada volume.</td></tr>`;
-          } else {
-              volumes.forEach(v => {
-                  const tr = document.createElement("tr");
-                  tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
-                  tr.innerHTML = `
-                      <td class="p-3 align-middle font-medium text-gray-200">
-                        <div class="flex items-center gap-2">
-                          <span>${v.name}</span>
-                          <ion-icon name="copy-outline" class="cursor-pointer text-gray-500 hover:text-white" onclick="copyToClipboard('${v.name}', 'Nama Volume')"></ion-icon>
-                        </div>
-                      </td>
-                      <td class="p-3 align-middle text-gray-400 font-mono hidden sm:table-cell">${v.driver}</td>
-                      <td class="p-3 align-middle text-gray-400 hidden md:table-cell">${v.created_at}</td>
-                      <td class="p-3 align-middle">
-                        <div class="flex items-center justify-end gap-2">
-                           <button onclick="handleQuickAction('inspect volume', '${v.name}')" title="Inspect Volume" class="p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white transition-colors">
-                            <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
-                          </button>
-                          <button onclick="handleQuickAction('rm volume', '${v.name}')" title="Remove Volume" class="p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-red-700/50 text-gray-300 hover:text-white transition-colors">
-                            <ion-icon name="trash-outline" class="text-lg"></ion-icon>
-                          </button>
-                        </div>
-                      </td>
-                  `;
-                  tbody.appendChild(tr);
-              });
-          }
-          tableContainer.appendChild(table);
-          wrapper.appendChild(tableContainer);
-          article.append(createIcon("server-outline", "bg-purple-800 text-white"), wrapper);
-          return article;
-      }
-
-      function createNetworkTableElement(networks) {
-          const article = createBaseMessageElement("self-start w-full");
-          const wrapper = document.createElement("div");
-          wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
-          const tableContainer = document.createElement("div");
-          tableContainer.className = "overflow-x-auto";
-          const table = document.createElement("table");
-          table.className = "w-full text-left text-sm";
-          table.innerHTML = `
-              <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs">
-                  <tr>
-                      <th class="p-3">Network Name</th>
-                      <th class="p-3 hidden sm:table-cell">Driver</th>
-                      <th class="p-3 hidden md:table-cell">Scope</th>
-                      <th class="p-3 text-right">Actions</th>
-                  </tr>
-              </thead>
-              <tbody class="divide-y divide-[var(--border-color)]"></tbody>
-          `;
-          const tbody = table.querySelector("tbody");
-          if (!networks || networks.length === 0) {
-              tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">Tidak ada network.</td></tr>`;
-          } else {
-              networks.forEach(n => {
-                  const tr = document.createElement("tr");
-                  tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
-                  tr.innerHTML = `
-                      <td class="p-3 align-middle font-medium text-gray-200">
-                        <div class="flex items-center gap-2">
-                           <span>${n.name}</span>
-                           <ion-icon name="copy-outline" class="cursor-pointer text-gray-500 hover:text-white" onclick="copyToClipboard('${n.name}', 'Nama Network')"></ion-icon>
-                        </div>
-                         <div class="text-xs text-gray-500 font-mono">${n.id}</div>
-                      </td>
-                      <td class="p-3 align-middle text-gray-400 font-mono hidden sm:table-cell">${n.driver}</td>
-                      <td class="p-3 align-middle text-gray-400 hidden md:table-cell">${n.scope}</td>
-                      <td class="p-3 align-middle text-right">
-                        <button onclick="handleQuickAction('inspect network', '${n.name}')" title="Inspect Network" class="p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white transition-colors">
-                          <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
-                        </button>
-                      </td>
-                  `;
-                  tbody.appendChild(tr);
-              });
-          }
-          tableContainer.appendChild(table);
-          wrapper.appendChild(tableContainer);
-          article.append(createIcon("git-network-outline", "bg-teal-800 text-white"), wrapper);
-          return article;
-      }
-
-      function createImageTableElement(images) {
-        // ... (fungsi ini tetap sama) ...
-        const article = createBaseMessageElement("self-start w-full");
-        const wrapper = document.createElement("div");
-        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
-        const tableContainer = document.createElement("div");
-        tableContainer.className = "overflow-x-auto";
-        const table = document.createElement("table");
-        table.className = "w-full text-left text-sm";
-
-        table.innerHTML = `
-          <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs">
-            <tr>
-              <th class="p-3">Repository</th>
-              <th class="p-3">Tag</th>
-              <th class="p-3 hidden sm:table-cell">Image ID</th>
-              <th class="p-3 hidden md:table-cell">Created</th>
-              <th class="p-3 text-right">Size (MB)</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--border-color)]"></tbody>
-        `;
-        const tbody = table.querySelector("tbody");
-
-        if (!images || images.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-500">Tidak ada image.</td></tr>`;
-        } else {
-          images.forEach(i => {
-            const tr = document.createElement("tr");
-            tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
-            tr.innerHTML = `
-              <td class="p-3 align-middle font-medium text-gray-200">${i.repository}</td>
-              <td class="p-3 align-middle text-gray-400">${i.tag}</td>
-              <td class="p-3 align-middle text-gray-500 font-mono hidden sm:table-cell">${i.id}</td>
-              <td class="p-3 align-middle text-gray-400 hidden md:table-cell">${i.created}</td>
-              <td class="p-3 align-middle text-gray-300 text-right">${i.size}</td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-        tableContainer.appendChild(table);
-        wrapper.appendChild(tableContainer);
-        article.append(createIcon("logo-docker", "bg-blue-800 text-white"), wrapper);
-        return article;
-      }
-
-       function createStatsTableElement(statsData) {
-        // ... (fungsi ini tetap sama) ...
-        const article = createBaseMessageElement("self-start w-full");
-        const wrapper = document.createElement("div");
-        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
-        const tableContainer = document.createElement("div");
-        tableContainer.className = "overflow-x-auto";
-        const table = document.createElement("table");
-        table.className = "w-full text-left text-sm";
-
-        table.innerHTML = `
-          <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs">
-            <tr>
-              <th class="p-3">Kontainer</th>
-              <th class="p-3">CPU Usage</th>
-              <th class="p-3">Memory Usage</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--border-color)]"></tbody>
-        `;
-        const tbody = table.querySelector("tbody");
-
-        if (!statsData || statsData.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-500">Tidak ada statistik untuk ditampilkan.</td></tr>`;
-        } else {
-          statsData.forEach(s => {
-            const tr = document.createElement("tr");
-            tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
-            tr.innerHTML = `
-              <td class="p-3 align-middle font-medium text-gray-200">${s.container_name}</td>
-              <td class="p-3 align-middle text-gray-400 font-mono">${s.cpu_usage}</td>
-              <td class="p-3 align-middle text-gray-400 font-mono">${s.mem_usage}</td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-        tableContainer.appendChild(table);
-        wrapper.appendChild(tableContainer);
-        article.append(createIcon("bar-chart-outline", "bg-green-800 text-white"), wrapper);
-        return article;
-      }
-
-      function createLogsTableElement(logsData) {
-        // ... (fungsi ini tetap sama) ...
-        const article = createBaseMessageElement("self-start w-full");
-        const wrapper = document.createElement("div");
-        wrapper.className = "bg-[var(--bg-tertiary)] rounded-xl overflow-hidden w-full border border-[var(--border-color)]";
-        const tableContainer = document.createElement("div");
-        tableContainer.className = "overflow-x-auto max-h-[40vh]";
-        const table = document.createElement("table");
-        table.className = "w-full text-left text-sm";
-
-        table.innerHTML = `
-          <thead class="bg-[var(--bg-secondary)] text-gray-400 uppercase tracking-wider text-xs sticky top-0">
-            <tr>
-              <th class="p-3 w-1/4">Timestamp</th>
-              <th class="p-3 w-3/4">Log Entry</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[var(--border-color)]"></tbody>
-        `;
-        const tbody = table.querySelector("tbody");
-
-        if (!logsData || logsData.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-500">Tidak ada log untuk ditampilkan.</td></tr>`;
-        } else {
-          logsData.forEach(l => {
-            const tr = document.createElement("tr");
-            tr.className = "hover:bg-[var(--bg-secondary)]/50 transition-colors";
-            tr.innerHTML = `
-              <td class="p-3 align-top text-gray-500 font-mono">${l.timestamp}</td>
-              <td class="p-3 align-top text-gray-300 font-mono whitespace-pre-wrap word-wrap break-all">${l.log_entry}</td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-        tableContainer.appendChild(table);
-        wrapper.appendChild(tableContainer);
-        article.append(createIcon("document-text-outline", "bg-yellow-800 text-white"), wrapper);
-        return article;
-      }
-
-      function createActionReceiptElement(data) {
-        // ... (fungsi ini diupdate untuk ikon baru) ...
-        const article = createBaseMessageElement("self-start");
-
-        const actionIcons = {
-          "Run": { name: "play-circle-outline", color: "bg-green-800/80" },
-          "Stop": { name: "stop-circle-outline", color: "bg-yellow-800/80" },
-          "Start": { name: "play-circle-outline", color: "bg-green-800/80" },
-          "Remove": { name: "trash-outline", color: "bg-red-800/80" },
-          "Pull": { name: "arrow-down-circle-outline", color: "bg-sky-800/80" },
-          "Prune": { name: "build-outline", color: "bg-orange-800/80" },
-          "default": { name: "checkmark-circle-outline", color: "bg-gray-700" }
-        };
-
-        const iconInfo = actionIcons[data.action] || actionIcons.default;
-        const icon = createIcon(iconInfo.name, iconInfo.color + " text-white");
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "bg-[var(--bg-tertiary)] rounded-r-xl rounded-b-xl p-4 min-w-[300px] border-l-4";
-
-        const statusColors = {
-            "Berhasil Dijalankan": "border-green-500",
-            "Berhasil Dihentikan": "border-yellow-500",
-            "Berhasil Dihidupkan": "border-green-500",
-            "Berhasil Dihapus": "border-red-500",
-            "Berhasil Ditarik": "border-sky-500",
-            "Sistem Berhasil Dibersihkan": "border-orange-500",
-            "default": "border-gray-500"
-        }
-        wrapper.classList.add(statusColors[data.status] || statusColors.default);
-
-        const statusText = document.createElement("p");
-        statusText.className = "text-lg font-bold text-white mb-2";
-        statusText.textContent = data.status;
-
-        const resourceText = document.createElement("p");
-        resourceText.className = "text-sm text-gray-300";
-        resourceText.innerHTML = `${data.resource_type}: <code class="font-semibold text-gray-200">${data.resource_name}</code>`;
-
-        wrapper.append(statusText, resourceText);
-
-        if (data.details && data.details.length > 0) {
-            const detailsList = document.createElement("div");
-            detailsList.className = "mt-3 pt-3 border-t border-[var(--border-color)] space-y-1";
-            data.details.forEach(detail => {
-                const detailItem = document.createElement("p");
-                detailItem.className = "text-xs text-gray-400";
-                detailItem.innerHTML = `<span class="font-semibold">${detail.key}:</span> <span class="font-mono">${detail.value}</span>`;
-                detailsList.appendChild(detailItem);
-            });
-            wrapper.appendChild(detailsList);
-        }
-
-        article.append(icon, wrapper);
-        return article;
-      }
-
-      function createTypingIndicator() {
-        const article = createBaseMessageElement();
-        article.id = "typingIndicator";
-        const pre = document.createElement("div");
-        pre.className = "flex items-center gap-1.5 p-3";
-        pre.innerHTML = `<div class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></div><div class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></div><div class="typing-dot w-2 h-2 bg-gray-400 rounded-full"></div>`;
-        article.append(createIcon("logo-docker", "bg-blue-800 text-white"), pre);
-        return article;
-      }
-
-      function createBotResponse(data) {
-        if (data.output_type === "table") {
-            if (data.output && data.output.length > 0) {
-                const firstItem = data.output[0];
-                if (firstItem.hasOwnProperty('status')) return createTableElement(data.output);
-                if (firstItem.hasOwnProperty('repository')) return createImageTableElement(data.output);
-                if (firstItem.hasOwnProperty('cpu_usage')) return createStatsTableElement(data.output);
-                if (firstItem.hasOwnProperty('log_entry')) return createLogsTableElement(data.output);
-                if (firstItem.hasOwnProperty('driver') && firstItem.hasOwnProperty('name')) return createVolumeTableElement(data.output);
-                if (firstItem.hasOwnProperty('driver') && firstItem.hasOwnProperty('scope')) return createNetworkTableElement(data.output);
-            }
-
-            if (data.received_command) {
-                 if (data.received_command.includes("image")) return createImageTableElement([]);
-                 if (data.received_command.includes("log")) return createLogsTableElement([]);
-                 if (data.received_command.includes("stats")) return createStatsTableElement([]);
-                 if (data.received_command.includes("volume")) return createVolumeTableElement([]);
-                 if (data.received_command.includes("network")) return createNetworkTableElement([]);
-            }
-            return createTableElement([]);
-        }
-        if (data.output_type === "action_receipt" && data.output) {
-            return createActionReceiptElement(data.output);
-        }
-        if (data.output_type === "inspect" && data.output) {
-            const objectName = data.received_command.split(" ").slice(2).join(" ");
-            return createInspectOutputElement(data.output, objectName);
-        }
-        if (data.output) {
-            return createBotMessageElement(data.output, "bot-output");
-        }
-        return null;
-      }
-
-      function appendToFeed(element) { if (!element) return; chatFeed.appendChild(element); setTimeout(() => { chatFeed.scrollTop = chatFeed.scrollHeight; }, 50); }
-      function setLoadingState(isLoading) { sendIcon.classList.toggle("hidden", isLoading); loadingIndicator.classList.toggle("hidden", !isLoading); sendButton.disabled = isLoading; commandInput.disabled = isLoading; if (!isLoading) commandInput.focus(); }
-      async function submitCommand(commandText) { if (!commandText) return; appendToFeed(createUserMessageElement(commandText)); commandInput.value = ""; const typingIndicator = createTypingIndicator(); appendToFeed(typingIndicator); setLoadingState(true); try { const response = await fetch("/api/command", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ command: commandText }), }); const data = await response.json(); data.received_command = commandText; typingIndicator.remove(); if (!response.ok) { appendToFeed(createBotMessageElement(data.error || `Server Error: ${response.status}`, "bot-error")); } else { const botResponse = createBotResponse(data); if(botResponse) appendToFeed(botResponse); if (data.error) appendToFeed(createBotMessageElement(data.error, "bot-error")); } } catch (error) { typingIndicator.remove(); console.error("Fetch error:", error); appendToFeed(createBotMessageElement(`Kesalahan Jaringan: ${error.message}.`, "bot-error")); } finally { setLoadingState(false); } }
-      function handleQuickAction(action, name) { let command = `${action} ${name}`; showToast(`Menjalankan: ${command}`); submitCommand(command); }
-      function toggleModal(show) { if (show) { commandGuideModal.classList.remove("hidden"); commandGuideModal.classList.add("opacity-100"); } else { commandGuideModal.classList.remove("opacity-100"); setTimeout(() => { commandGuideModal.classList.add("hidden"); }, 300); } }
-      function populateCommandGuide() { commandGuideContent.innerHTML = rawCommandGuide?.map(cmd => `<div class="p-3 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-color)] hover:bg-white/5 hover:border-white/20 transition-all duration-200"><p class="text-gray-200">${cmd.description}</p><p class="text-gray-400 mt-2 text-xs">Contoh: <code class="font-mono bg-[var(--bg-secondary)] px-1.5 py-0.5 rounded">${cmd.example}</code></p></div>`).join("") || '<p class="text-gray-500">Panduan perintah tidak tersedia.</p>'; }
-      commandForm.addEventListener("submit", (e) => { e.preventDefault(); submitCommand(commandInput.value.trim()); });
-      toggleGuideButton.addEventListener("click", () => toggleModal(true));
-      closeGuideButton.addEventListener("click", () => toggleModal(false));
-      commandGuideModal.addEventListener("click", (event) => { if (event.target === commandGuideModal) toggleModal(false); });
-      document.addEventListener("DOMContentLoaded", () => { appendToFeed(createBotMessageElement("Selamat datang di ChatOps! Ketik perintah untuk mengelola Docker container Anda atau klik 'Panduan' untuk melihat daftar perintah.", "system-info")); populateCommandGuide(); commandInput.focus(); });
+    <script id="command-guide-data" type="application/json">
+      {{ command_guide | tojson | safe }}
     </script>
+
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   </body>
 </html>

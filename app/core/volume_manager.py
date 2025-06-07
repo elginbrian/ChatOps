@@ -13,13 +13,14 @@ def list_volumes(params: dict) -> tuple[list, str]:
         for vol in volumes:
             volume_list.append({
                 "name": vol.name,
-                "driver": vol.driver,
+                "driver": vol.attrs.get('Driver', 'n/a'), 
                 "created_at": vol.attrs.get('CreatedAt', '-')[:19].replace('T', ' ')
             })
         return volume_list, ""
     except docker.errors.APIError as e:
         return None, f"Error Docker API: {e.explanation or str(e)}"
     except Exception as e:
+        current_app.logger.exception("Error di list_volumes:")
         return None, f"Error tak terduga: {str(e)}"
 
 def remove_volume(params: dict) -> tuple[dict, str]:
