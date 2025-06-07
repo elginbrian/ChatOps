@@ -406,6 +406,58 @@
         return article;
       }
 
+      function createActionReceiptElement(data) {
+        const article = createBaseMessageElement("self-start");
+
+        const actionIcons = {
+          "Run": { name: "play-circle-outline", color: "bg-green-800/80" },
+          "Stop": { name: "stop-circle-outline", color: "bg-yellow-800/80" },
+          "Remove": { name: "trash-outline", color: "bg-red-800/80" },
+          "Pull": { name: "arrow-down-circle-outline", color: "bg-sky-800/80" },
+          "default": { name: "checkmark-circle-outline", color: "bg-gray-700" }
+        };
+
+        const iconInfo = actionIcons[data.action] || actionIcons.default;
+        const icon = createIcon(iconInfo.name, iconInfo.color + " text-white");
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "bg-[var(--bg-tertiary)] rounded-r-xl rounded-b-xl p-4 min-w-[300px] border-l-4";
+
+        const statusColors = {
+            "Berhasil Dijalankan": "border-green-500",
+            "Berhasil Dihentikan": "border-yellow-500",
+            "Berhasil Dihapus": "border-red-500",
+            "Berhasil Ditarik": "border-sky-500",
+            "default": "border-gray-500"
+        }
+        wrapper.classList.add(statusColors[data.status] || statusColors.default);
+
+        const statusText = document.createElement("p");
+        statusText.className = "text-lg font-bold text-white mb-2";
+        statusText.textContent = data.status;
+
+        const resourceText = document.createElement("p");
+        resourceText.className = "text-sm text-gray-300";
+        resourceText.innerHTML = `${data.resource_type}: <code class="font-semibold text-gray-200">${data.resource_name}</code>`;
+
+        wrapper.append(statusText, resourceText);
+
+        if (data.details && data.details.length > 0) {
+            const detailsList = document.createElement("div");
+            detailsList.className = "mt-3 pt-3 border-t border-[var(--border-color)] space-y-1";
+            data.details.forEach(detail => {
+                const detailItem = document.createElement("p");
+                detailItem.className = "text-xs text-gray-400";
+                detailItem.innerHTML = `<span class="font-semibold">${detail.key}:</span> <span class="font-mono">${detail.value}</span>`;
+                detailsList.appendChild(detailItem);
+            });
+            wrapper.appendChild(detailsList);
+        }
+
+        article.append(icon, wrapper);
+        return article;
+      }
+
       function createTypingIndicator() {
         const article = createBaseMessageElement();
         article.id = "typingIndicator";
@@ -439,6 +491,9 @@
                  if (data.received_command.includes("stats")) return createStatsTableElement([]);
             }
             return createTableElement([]);
+        }
+        if (data.output_type === "action_receipt" && data.output) {
+            return createActionReceiptElement(data.output);
         }
         if (data.output) {
             return createBotMessageElement(data.output, "bot-output");

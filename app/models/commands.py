@@ -66,10 +66,10 @@ COMMAND_GUIDE = [
     },
     {
         "id": "compose_up",
-        "pattern": r"^compose\s+up(?:\s+-d)?(?:\s+(?P<service>\w+))?$",
+        "pattern": r"^compose\s+up(?:\s+(?P<service>[a-zA-Z0-9_.-]+))?$",
         "action": "compose_up",
-        "description": "Menjalankan 'docker-compose up -d' untuk semua layanan atau layanan tertentu.",
-        "example": "compose up -d"
+        "description": "Menjalankan 'docker-compose up -d' untuk semua layanan atau layanan spesifik (flag -d ditambahkan otomatis).",
+        "example": "compose up my_service"
     },
     {
         "id": "compose_down",
