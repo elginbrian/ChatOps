@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="id">
   <head>
-    <meta charset="UTF-t-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ChatOps - Docker Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,7 +12,7 @@
     <div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2"></div>
 
     <div class="flex h-screen">
-      <aside class="w-64 bg-black/50 flex flex-col p-2 shrink-0">
+      <aside class="w-64 bg-black/50 flex flex-col p-2 shrink-0 border-r border-[var(--border-color)]">
         <div class="p-2">
           <button id="newChatButton" class="w-full flex items-center justify-center gap-2 p-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--bg-tertiary)] transition-colors">
             <ion-icon name="add-circle-outline" class="text-xl"></ion-icon>
@@ -32,7 +32,7 @@
         <header class="p-4 border-b border-[var(--border-color)] flex justify-between items-center shrink-0">
           <div class="flex items-center gap-3">
             <ion-icon name="terminal-outline" class="text-2xl text-[var(--text-secondary)]"></ion-icon>
-            <h1 id="chatHeader" class="text-lg font-bold text-[var(--text-primary)] tracking-wide">Percakapan Baru</h1>
+            <h1 id="chatHeader" class="text-lg font-bold text-[var(--text-primary)] tracking-wide">ChatOps</h1>
           </div>
         </header>
 
@@ -108,13 +108,104 @@
       </div>
     </template>
 
-    <template id="container-table-row-template"> </template>
-    <template id="image-table-row-template"> </template>
-    <template id="volume-table-row-template"> </template>
-    <template id="network-table-row-template"> </template>
-    <template id="stats-table-row-template"> </template>
-    <template id="logs-table-row-template"> </template>
-    <template id="action-receipt-template"> </template>
+    <template id="container-table-row-template">
+      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
+        <td class="p-3 align-middle"><span class="status-indicator w-2.5 h-2.5 rounded-full inline-block"></span></td>
+        <td class="p-3 align-middle font-medium text-gray-200">
+          <div class="flex items-center gap-2">
+            <span class="container-name"></span>
+            <ion-icon name="copy-outline" class="copy-button cursor-pointer text-gray-500 hover:text-white"></ion-icon>
+          </div>
+          <div class="container-id text-xs text-gray-500 font-mono"></div>
+        </td>
+        <td class="container-image p-3 align-middle text-gray-400 hidden md:table-cell"></td>
+        <td class="container-ports p-3 align-middle text-gray-400 font-mono hidden lg:table-cell"></td>
+        <td class="p-3 align-middle">
+          <div class="flex items-center justify-end gap-2">
+            <button title="Inspect Container" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
+              <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
+            </button>
+            <button title="View Logs" class="logs-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white disabled:opacity-50">
+              <ion-icon name="document-text-outline" class="text-lg"></ion-icon>
+            </button>
+            <button title="Stop Container" class="stop-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-yellow-700/50 text-gray-300 hover:text-white disabled:opacity-50">
+              <ion-icon name="stop-circle-outline" class="text-lg"></ion-icon>
+            </button>
+          </div>
+        </td>
+      </tr>
+    </template>
+
+    <template id="image-table-row-template">
+      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
+        <td class="repository p-3 align-middle font-medium text-gray-200"></td>
+        <td class="tag p-3 align-middle text-gray-400"></td>
+        <td class="id p-3 align-middle text-gray-500 font-mono hidden sm:table-cell"></td>
+        <td class="created p-3 align-middle text-gray-400 hidden md:table-cell"></td>
+        <td class="size p-3 align-middle text-gray-300 text-right"></td>
+      </tr>
+    </template>
+
+    <template id="volume-table-row-template">
+      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
+        <td class="p-3 align-middle font-medium text-gray-200">
+          <div class="flex items-center gap-2">
+            <span class="name"></span>
+            <ion-icon name="copy-outline" class="copy-button cursor-pointer text-gray-500 hover:text-white"></ion-icon>
+          </div>
+        </td>
+        <td class="driver p-3 align-middle text-gray-400 font-mono hidden sm:table-cell"></td>
+        <td class="created_at p-3 align-middle text-gray-400 hidden md:table-cell"></td>
+        <td class="p-3 align-middle">
+          <div class="flex items-center justify-end gap-2">
+            <button title="Inspect Volume" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white">
+              <ion-icon name="code-slash-outline" class="text-lg"></ion-icon>
+            </button>
+            <button title="Remove Volume" class="remove-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-red-700/50 text-gray-300 hover:text-white"><ion-icon name="trash-outline" class="text-lg"></ion-icon></button>
+          </div>
+        </td>
+      </tr>
+    </template>
+
+    <template id="network-table-row-template">
+      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
+        <td class="p-3 align-middle font-medium text-gray-200">
+          <div class="flex items-center gap-2">
+            <span class="name"></span>
+            <ion-icon name="copy-outline" class="copy-button cursor-pointer text-gray-500 hover:text-white"></ion-icon>
+          </div>
+          <div class="id text-xs text-gray-500 font-mono"></div>
+        </td>
+        <td class="driver p-3 align-middle text-gray-400 font-mono hidden sm:table-cell"></td>
+        <td class="scope p-3 align-middle text-gray-400 hidden md:table-cell"></td>
+        <td class="p-3 align-middle text-right">
+          <button title="Inspect Network" class="inspect-button p-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-gray-300 hover:text-white"><ion-icon name="code-slash-outline" class="text-lg"></ion-icon></button>
+        </td>
+      </tr>
+    </template>
+
+    <template id="stats-table-row-template">
+      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
+        <td class="container_name p-3 align-middle font-medium text-gray-200"></td>
+        <td class="cpu_usage p-3 align-middle text-gray-400 font-mono"></td>
+        <td class="mem_usage p-3 align-middle text-gray-400 font-mono"></td>
+      </tr>
+    </template>
+
+    <template id="logs-table-row-template">
+      <tr class="hover:bg-[var(--bg-secondary)]/50 transition-colors">
+        <td class="timestamp p-3 align-top text-gray-500 font-mono w-1/4"></td>
+        <td class="log_entry p-3 align-top text-gray-300 font-mono whitespace-pre-wrap word-wrap break-all w-3/4"></td>
+      </tr>
+    </template>
+
+    <template id="action-receipt-template">
+      <div class="wrapper bg-[var(--bg-tertiary)] rounded-r-xl rounded-b-xl p-4 min-w-[300px] border-l-4">
+        <p class="status-text text-lg font-bold text-white mb-2"></p>
+        <p class="resource-text text-sm text-gray-300"><span class="resource-type"></span>: <code class="font-semibold text-gray-200 resource-name"></code></p>
+        <div class="details-list mt-3 pt-3 border-t border-[var(--border-color)] space-y-1"></div>
+      </div>
+    </template>
 
     <script id="command-guide-data" type="application/json">
       {{ command_guide | tojson | safe }}
